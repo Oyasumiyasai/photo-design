@@ -138,18 +138,18 @@
                 <div>
                     <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">参考画像 (URL または ファイル選択)</label>
                     <div class="flex gap-2 mb-2">
-                        <input type="url" id="promptImageUrlInput" placeholder="https://example.com/image.jpg" onchange="previewImageFromUrl()"
+                        <input type="url" id="promptImageUrlInput" placeholder="https://example.com/image.jpg" oninput="previewImageFromUrl()"
                             class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
                         <label class="shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-medium cursor-pointer border border-slate-200 flex items-center gap-1.5">
                             <i class="fa-solid fa-upload"></i>
-                            <span>画像選択</span>
+                            <span id="uploadBtnLabel">画像選択</span>
                             <input type="file" id="imageFileInput" accept="image/*" onchange="handleFileSelect(event)" class="hidden">
                         </label>
                     </div>
                     <!-- プレビュー -->
-                    <div id="imagePreviewContainer" class="hidden relative rounded-xl overflow-hidden border border-slate-200 h-32 bg-slate-100">
+                    <div id="imagePreviewContainer" class="hidden relative rounded-xl overflow-hidden border border-slate-200 h-36 bg-slate-100">
                         <img id="imagePreview" src="" class="w-full h-full object-cover">
-                        <button type="button" onclick="clearImagePreview()" class="absolute top-2 right-2 bg-slate-900/70 text-white w-6 h-6 rounded-full flex items-center justify-center hover:bg-slate-900">
+                        <button type="button" onclick="clearImagePreview()" class="absolute top-2 right-2 bg-slate-900/70 hover:bg-slate-900 text-white w-7 h-7 rounded-full flex items-center justify-center transition-all shadow-md">
                             <i class="fa-solid fa-xmark text-xs"></i>
                         </button>
                     </div>
@@ -587,7 +587,7 @@
                 document.getElementById('imagePreview').src = url;
                 document.getElementById('imagePreviewContainer').classList.remove('hidden');
             } else {
-                clearImagePreview();
+                document.getElementById('imagePreviewContainer').classList.add('hidden');
             }
         }
 
@@ -595,12 +595,50 @@
             const file = e.target.files[0];
             if (!file) return;
 
+            const btnLabel = document.getElementById('uploadBtnLabel');
+            btnLabel.textContent = '圧縮中...';
+
             const reader = new FileReader();
             reader.onload = function(evt) {
-                const base64 = evt.target.result;
-                document.getElementById('promptImageUrlInput').value = base64;
-                document.getElementById('imagePreview').src = base64;
-                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                const img = new Image();
+                img.onload = function() {
+                    // Canvasで画像をリサイズ・軽量化（最大幅/高さ 800px, JPEG品質 0.7）
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;
+                    const MAX_HEIGHT = 800;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // 超軽量化されたBase64 (約10〜30KBに収まるためスプレッドシートやLocalStorageでも保持可能)
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                    
+                    document.getElementById('promptImageUrlInput').value = compressedBase64;
+                    document.getElementById('imagePreview').src = compressedBase64;
+                    document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                    btnLabel.textContent = '画像選択';
+                };
+                img.onerror = function() {
+                    showToast('画像の読み込みに失敗しました');
+                    btnLabel.textContent = '画像選択';
+                };
+                img.src = evt.target.result;
             };
             reader.readAsDataURL(file);
         }
@@ -610,6 +648,7 @@
             document.getElementById('imageFileInput').value = '';
             document.getElementById('imagePreview').src = '';
             document.getElementById('imagePreviewContainer').classList.add('hidden');
+            document.getElementById('uploadBtnLabel').textContent = '画像選択';
         }
 
         // LocalStorageへの一括保存
