@@ -202,7 +202,6 @@
     </div>
 
     <script>
-        // デフォルトGAS URL
         const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbyfLxct_Hx4PX6FvvEZrAAbzpfK5SDc-fauoHpPCx6bX86U9CoXY7o-YXykCcqdY9Bi/exec';
         
         let GAS_WEB_APP_URL = localStorage.getItem('GAS_WEB_APP_URL') || DEFAULT_GAS_URL;
@@ -228,7 +227,6 @@
             loadPrompts();
         });
 
-        // データの読み込み (GAS優先 -> LocalStorageバックアップ)
         async function loadPrompts() {
             if (GAS_WEB_APP_URL) {
                 await fetchPromptsFromGAS();
@@ -237,7 +235,6 @@
             }
         }
 
-        // LocalStorageからの読み込み
         function loadFromLocalStorage() {
             const saved = localStorage.getItem('PROMPTS_DATA');
             if (saved) {
@@ -253,7 +250,6 @@
             renderPrompts();
         }
 
-        // GASから全プロンプトを取得（最新順を保持）
         async function fetchPromptsFromGAS() {
             const syncStatusText = document.getElementById('syncStatusText');
             const syncStatusDot = document.getElementById('syncStatusDot');
@@ -270,7 +266,6 @@
                         prompts = [...defaultPrompts];
                         await saveAllPromptsToGAS(prompts);
                     } else {
-                        // GASからのデータを逆順にして最新が先頭に来るようにセット
                         prompts = res.data.reverse();
                     }
                     saveToLocalStorage();
@@ -289,7 +284,6 @@
             renderPrompts();
         }
 
-        // カテゴリボタン描画
         function renderCategories() {
             const container = document.getElementById('categoryFilterContainer');
             const categories = ['すべて', '人物・ポーズ', 'レイアウト・構図', '背景・風景', '照明・シネマ', 'スタイル・画風', 'その他'];
@@ -312,7 +306,7 @@
             renderPrompts();
         }
 
-        // タイル形式（独立したカード）一覧の描画
+        // タイル形式カードの安全な描画（ID渡しによりSyntaxErrorを回避）
         function renderPrompts() {
             const grid = document.getElementById('promptGrid');
             const emptyState = document.getElementById('emptyState');
@@ -337,7 +331,6 @@
             emptyState.classList.add('hidden');
             emptyState.classList.remove('flex');
 
-            // タイルひとつひとつを確実に独立して描画（マトリョーシカ状の入れ子を完全解消）
             grid.innerHTML = filtered.map(item => `
                 <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden group">
                     <!-- 画像エリア -->
@@ -372,7 +365,7 @@
                                 <p class="font-mono text-xs text-slate-700 leading-relaxed line-clamp-3 select-all">${escapeHtml(item.prompt)}</p>
                             </div>
 
-                            <!-- メモやタグ（存在する場合） -->
+                            <!-- メモやタグ -->
                             ${item.note ? `
                                 <p class="text-xs text-slate-500 italic"><i class="fa-regular fa-note-sticky mr-1"></i>${escapeHtml(item.note)}</p>
                             ` : ''}
@@ -384,17 +377,17 @@
                             ` : ''}
                         </div>
 
-                        <!-- アクションボタングループ (コピー, Gemini, ChatGPT) -->
+                        <!-- アクションボタングループ (ID渡しでエラー防止) -->
                         <div class="pt-3 border-t border-slate-100 flex items-center gap-1.5">
-                            <button onclick="copyPromptText('${escapeJs(item.prompt)}')" class="flex-1 inline-flex items-center justify-center gap-1 bg-slate-900 hover:bg-slate-800 text-white font-medium py-2 px-2.5 rounded-xl text-xs transition-all shadow-sm active:scale-95" title="クリップボードにコピー">
+                            <button onclick="copyPromptById('${item.id}')" class="flex-1 inline-flex items-center justify-center gap-1 bg-slate-900 hover:bg-slate-800 text-white font-medium py-2 px-2.5 rounded-xl text-xs transition-all shadow-sm active:scale-95" title="クリップボードにコピー">
                                 <i class="fa-regular fa-copy"></i>
                                 <span>コピー</span>
                             </button>
-                            <button onclick="openInGemini('${escapeJs(item.prompt)}')" class="flex-1 inline-flex items-center justify-center gap-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-2 px-2 rounded-xl text-xs transition-all border border-indigo-200/60 active:scale-95" title="プロンプトをコピーしてGeminiを開く">
+                            <button onclick="openInGeminiById('${item.id}')" class="flex-1 inline-flex items-center justify-center gap-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-2 px-2 rounded-xl text-xs transition-all border border-indigo-200/60 active:scale-95" title="プロンプトをセットしてGeminiを開く">
                                 <i class="fa-solid fa-sparkles text-indigo-600"></i>
                                 <span>Gemini</span>
                             </button>
-                            <button onclick="openInChatGPT('${escapeJs(item.prompt)}')" class="flex-1 inline-flex items-center justify-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold py-2 px-2 rounded-xl text-xs transition-all border border-emerald-200/60 active:scale-95" title="プロンプトをコピーしてChatGPTを開く">
+                            <button onclick="openInChatGPTById('${item.id}')" class="flex-1 inline-flex items-center justify-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold py-2 px-2 rounded-xl text-xs transition-all border border-emerald-200/60 active:scale-95" title="プロンプトをセットしてChatGPTを開く">
                                 <i class="fa-solid fa-robot text-emerald-600"></i>
                                 <span>ChatGPT</span>
                             </button>
@@ -404,7 +397,21 @@
             `).join('');
         }
 
-        // プロンプトをコピーして Gemini Webサイトへ移動
+        function copyPromptById(id) {
+            const item = prompts.find(p => p.id === id);
+            if (item) copyPromptText(item.prompt);
+        }
+
+        function openInGeminiById(id) {
+            const item = prompts.find(p => p.id === id);
+            if (item) openInGemini(item.prompt);
+        }
+
+        function openInChatGPTById(id) {
+            const item = prompts.find(p => p.id === id);
+            if (item) openInChatGPT(item.prompt);
+        }
+
         function openInGemini(text) {
             copyToClipboard(text);
             showToast('コピーしました！Geminiを開きます');
@@ -414,7 +421,6 @@
             }, 400);
         }
 
-        // プロンプトをコピーして ChatGPT Webサイトへ移動（URLパラメータでプロンプトを自動セット）
         function openInChatGPT(text) {
             copyToClipboard(text);
             showToast('コピーしました！ChatGPTを開きます');
@@ -424,13 +430,11 @@
             }, 400);
         }
 
-        // プロンプトテキストのみコピー
         function copyPromptText(text) {
             copyToClipboard(text);
             showToast('クリップボードにコピーしました');
         }
 
-        // クリップボードコピー実行 (iFrame対応の安全処理)
         function copyToClipboard(text) {
             const textArea = document.createElement("textarea");
             textArea.value = text;
@@ -456,7 +460,6 @@
             }
         }
 
-        // モーダルの開閉
         function openPromptModal(isEdit = false) {
             if (!isEdit) {
                 document.getElementById('editPromptId').value = '';
@@ -471,7 +474,6 @@
             document.getElementById('promptModal').classList.add('hidden');
         }
 
-        // プロンプト保存処理（★新規データは常に配列の最上部（先頭）に追加）
         async function handleFormSubmit(e) {
             e.preventDefault();
 
@@ -497,11 +499,9 @@
             };
 
             if (editId) {
-                // 既存更新
                 const index = prompts.findIndex(p => p.id === editId);
                 if (index !== -1) prompts[index] = promptData;
             } else {
-                // ★ 新規追加：常に最上部（配列の先頭 index:0）に追加
                 prompts.unshift(promptData);
             }
 
@@ -510,13 +510,11 @@
             closePromptModal();
             showToast(editId ? '更新しました' : '先頭に追加しました');
 
-            // GASと同期
             if (GAS_WEB_APP_URL) {
                 savePromptToGAS(promptData);
             }
         }
 
-        // GASへの保存リクエスト
         async function savePromptToGAS(promptData) {
             try {
                 await fetch(GAS_WEB_APP_URL, {
@@ -533,7 +531,6 @@
             }
         }
 
-        // プロンプト編集
         function editPrompt(id) {
             const item = prompts.find(p => p.id === id);
             if (!item) return;
@@ -557,7 +554,6 @@
             openPromptModal(true);
         }
 
-        // プロンプト削除
         async function deletePromptItem(id) {
             if (!confirm('このプロンプトを削除してもよろしいですか？')) return;
 
@@ -580,7 +576,6 @@
             }
         }
 
-        // 画像プレビュー関連
         function previewImageFromUrl() {
             const url = document.getElementById('promptImageUrlInput').value.trim();
             if (url) {
@@ -602,7 +597,6 @@
             reader.onload = function(evt) {
                 const img = new Image();
                 img.onload = function() {
-                    // Canvasで画像をリサイズ・軽量化（最大幅/高さ 800px, JPEG品質 0.7）
                     const canvas = document.createElement('canvas');
                     const MAX_WIDTH = 800;
                     const MAX_HEIGHT = 800;
@@ -626,7 +620,6 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // 超軽量化されたBase64 (約10〜30KBに収まるためスプレッドシートやLocalStorageでも保持可能)
                     const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
                     
                     document.getElementById('promptImageUrlInput').value = compressedBase64;
@@ -651,12 +644,10 @@
             document.getElementById('uploadBtnLabel').textContent = '画像選択';
         }
 
-        // LocalStorageへの一括保存
         function saveToLocalStorage() {
             localStorage.setItem('PROMPTS_DATA', JSON.stringify(prompts));
         }
 
-        // GAS全データ上書き保存
         async function saveAllPromptsToGAS(dataArray) {
             if (!GAS_WEB_APP_URL) return;
             try {
@@ -671,7 +662,6 @@
             }
         }
 
-        // GAS設定モーダル
         function openSettingsModal() {
             document.getElementById('settingsModal').classList.remove('hidden');
         }
@@ -687,7 +677,6 @@
             fetchPromptsFromGAS();
         }
 
-        // ユーティリティ
         function showToast(msg) {
             const toast = document.getElementById('toast');
             document.getElementById('toastMessage').textContent = msg;
@@ -702,11 +691,6 @@
             return str.replace(/[&<>"']/g, m => ({
                 '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
             })[m]);
-        }
-
-        function escapeJs(str) {
-            if (!str) return '';
-            return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
         }
     </script>
 </body>
