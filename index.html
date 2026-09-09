@@ -3,1134 +3,672 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Photo Layout Prompt Manager</title>
+    <title>プロンプトメモ & レイアウト管理</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
-        }
-        .line-clamp-4 {
+        body { font-family: 'Inter', sans-serif; }
+        .line-clamp-3 {
             display: -webkit-box;
-            -webkit-line-clamp: 4;
+            -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-12">
 
-    <!-- Header -->
+    <!-- ヘッダー（新規プロンプト追加ボタン & 設定ボタン） -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <!-- Sync Indicator -->
-            <div id="sync-status" class="flex items-center space-x-2 text-xs font-medium text-slate-500">
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span id="sync-status-text">GASスプレッドシート連携有効</span>
-            </div>
-
-            <!-- Add Prompt Button -->
-            <button id="open-add-modal" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-medium transition duration-200 flex items-center space-x-2 shadow-sm">
-                <i class="fa-solid fa-plus text-xs"></i>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <!-- 左側：新規プロンプト追加ボタン -->
+            <button onclick="openPromptModal()" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all text-sm active:scale-95">
+                <i class="fa-solid fa-plus text-base"></i>
                 <span>新規プロンプト追加</span>
             </button>
+
+            <!-- 右側：同期ステータス & GAS設定ボタン -->
+            <div class="flex items-center gap-3">
+                <div id="syncStatus" class="hidden sm:flex items-center gap-2 text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                    <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span id="syncStatusText">スプレッドシート連携済み</span>
+                </div>
+                <button onclick="openSettingsModal()" class="p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors" title="GAS連携設定">
+                    <i class="fa-solid fa-gear text-lg"></i>
+                </button>
+            </div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- メインコンテンツ -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        
+        <!-- 検索・フィルター領域 -->
+        <div class="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
+            <!-- カテゴリタブ -->
+            <div class="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none" id="categoryFilterContainer">
+                <!-- JSで動的生成 -->
+            </div>
 
-        <!-- Controls & Filters -->
-        <div class="flex flex-col md:flex-row gap-4 justify-between items-center mb-8">
-            <!-- Search -->
-            <div class="relative w-full md:w-80">
+            <!-- 検索窓 -->
+            <div class="relative w-full md:w-72">
                 <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                <input type="text" id="search-input" placeholder="タイトルやタグで検索..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 transition">
-            </div>
-
-            <!-- Categories -->
-            <div class="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none" id="category-filters">
-                <!-- Dynamic categories injected here -->
+                <input type="text" id="searchInput" oninput="renderPrompts()" placeholder="プロンプトやタグを検索..." 
+                    class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
             </div>
         </div>
 
-        <!-- Grid Cards Container -->
-        <div id="prompts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Dynamic Prompt Cards -->
+        <!-- プロンプトタイル（独立したカード一覧） -->
+        <div id="promptGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- JSで動的に個別のカードが描画されます -->
         </div>
 
-        <!-- Empty State -->
-        <div id="empty-state" class="hidden text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
-            <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
-                <i class="fa-regular fa-folder-open"></i>
+        <!-- データ空の場合の表示 -->
+        <div id="emptyState" class="hidden flex-col items-center justify-center py-16 text-center">
+            <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mb-4">
+                <i class="fa-solid fa-folder-open text-2xl"></i>
             </div>
-            <h3 class="text-base font-semibold text-slate-800 mb-1">プロンプトが見つかりません</h3>
-            <p class="text-sm text-slate-500 mb-4">条件を変更するか、新しいレイアウトプロンプトを追加してください。</p>
-            <button id="reset-filter-btn" class="text-xs text-pink-600 font-semibold hover:underline">フィルターをリセット</button>
+            <h3 class="text-base font-semibold text-slate-700 mb-1">プロンプトが見つかりません</h3>
+            <p class="text-sm text-slate-500 max-w-sm mb-4">新規追加ボタンから新しいプロンプトを登録してください。</p>
+            <button onclick="openPromptModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg text-sm">
+                プロンプトを作成する
+            </button>
         </div>
-
     </main>
 
-    <!-- Modal for Adding/Editing Prompt -->
-    <div id="modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <button id="close-modal" class="absolute right-4 top-4 text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 transition">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+    <!-- プロンプト追加/編集 モーダル -->
+    <div id="promptModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl border border-slate-100 my-8">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+                <h3 id="modalTitle" class="text-lg font-bold text-slate-800">新規プロンプトの作成</h3>
+                <button onclick="closePromptModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
 
-            <h2 id="modal-title" class="text-lg font-bold text-slate-900 mb-4">新規プロンプト登録</h2>
+            <form id="promptForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                <input type="hidden" id="editPromptId">
 
-            <form id="prompt-form" class="space-y-4">
-                <input type="hidden" id="prompt-id">
-
+                <!-- タイトル -->
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">タイトル *</label>
-                    <input type="text" id="input-title" required placeholder="例: マガジン風4分割コラージュ" class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500">
+                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">タイトル <span class="text-rose-500">*</span></label>
+                    <input type="text" id="promptTitleInput" required placeholder="例: ポートレート構図・ライティング" 
+                        class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <!-- カテゴリ & タグ -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">カテゴリ</label>
-                        <select id="input-category" class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 bg-white">
-                            <option value="マガジン風">マガジン風</option>
-                            <option value="グリッド・コラージュ">グリッド・コラージュ</option>
-                            <option value="フィルム・レトロ">フィルム・レトロ</option>
-                            <option value="ミニマル・額縁">ミニマル・額縁</option>
-                            <option value="ムードボード">ムードボード</option>
-                            <option value="SNS・ストーリーズ">SNS・ストーリーズ</option>
-                            <option value="デジカメ・Y2K">デジカメ・Y2K</option>
-                            <option value="その他">その他</option>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">カテゴリ</label>
+                        <select id="promptCategoryInput" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white">
+                            <option value="人物・ポーズ">人物・ポーズ</option>
+                            <option value="レイアウト・構図">レイアウト・構図</option>
+                            <option value="背景・風景">背景・風景</option>
+                            <option value="照明・シネマ">照明・シネマ</option>
+                            <option value="スタイル・画風">スタイル・画風</option>
+                            <option value="その他" selected>その他</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">タグ (カンマ区切り)</label>
-                        <input type="text" id="input-tags" placeholder="4分割, カフェ, 白基調" class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500">
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">タグ (カンマ区切り)</label>
+                        <input type="text" id="promptTagsInput" placeholder="例: 屋外, 8k, シネマティック" 
+                            class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
                     </div>
                 </div>
 
+                <!-- プロンプト本文 -->
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">メインプロンプト (英語) *</label>
-                    <textarea id="input-prompt" required rows="4" placeholder="A stylish aesthetic magazine layout collage featuring four different modern lifestyle photos, clean typography..." class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"></textarea>
+                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">プロンプト本文 <span class="text-rose-500">*</span></label>
+                    <textarea id="promptContentInput" rows="4" required placeholder="Generate a high quality photograph of..." 
+                        class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono text-xs leading-relaxed"></textarea>
                 </div>
 
+                <!-- メモ -->
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">日本語解説・メモ</label>
-                    <textarea id="input-note" rows="2" placeholder="どんな写真に合うか、パラメーターの調整メモなど" class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"></textarea>
+                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">メモ・注意事項</label>
+                    <input type="text" id="promptNoteInput" placeholder="パラメータ設定や使い方の補足" 
+                        class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
                 </div>
 
-                <!-- Reference Image Upload & URL input -->
+                <!-- 参考画像 (URL または ファイルアップロード) -->
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">参考画像 (アップロード または URL)</label>
-                    
-                    <!-- Dropzone -->
-                    <div id="dropzone" class="border-2 border-dashed border-slate-300 hover:border-pink-400 rounded-xl p-4 text-center cursor-pointer bg-slate-50 hover:bg-pink-50/30 transition group mb-2">
-                        <input type="file" id="input-image-file" accept="image/*" class="hidden">
-                        <div id="dropzone-prompt" class="space-y-1">
-                            <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-400 group-hover:text-pink-500 transition"></i>
-                            <p class="text-xs font-medium text-slate-600">クリックして画像を選択、またはドラッグ＆ドロップ</p>
-                            <p class="text-[10px] text-slate-400">PNG, JPG, WEBP (自動圧縮保存されます)</p>
-                        </div>
-                        
-                        <!-- Image Preview Area -->
-                        <div id="image-preview-container" class="hidden relative inline-block max-w-full">
-                            <img id="image-preview" src="" alt="Preview" class="max-h-36 rounded-lg object-contain shadow-sm border border-slate-200">
-                            <button type="button" id="remove-image-btn" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow hover:bg-red-600 transition">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">参考画像 (URL または ファイル選択)</label>
+                    <div class="flex gap-2 mb-2">
+                        <input type="url" id="promptImageUrlInput" placeholder="https://example.com/image.jpg" onchange="previewImageFromUrl()"
+                            class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                        <label class="shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-medium cursor-pointer border border-slate-200 flex items-center gap-1.5">
+                            <i class="fa-solid fa-upload"></i>
+                            <span>画像選択</span>
+                            <input type="file" id="imageFileInput" accept="image/*" onchange="handleFileSelect(event)" class="hidden">
+                        </label>
                     </div>
-
-                    <!-- Direct URL input -->
-                    <div class="relative">
-                        <i class="fa-solid fa-link absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                        <input type="url" id="input-image" placeholder="またはWeb上の画像URLを入力 (https://...)" class="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500">
+                    <!-- プレビュー -->
+                    <div id="imagePreviewContainer" class="hidden relative rounded-xl overflow-hidden border border-slate-200 h-32 bg-slate-100">
+                        <img id="imagePreview" src="" class="w-full h-full object-cover">
+                        <button type="button" onclick="clearImagePreview()" class="absolute top-2 right-2 bg-slate-900/70 text-white w-6 h-6 rounded-full flex items-center justify-center hover:bg-slate-900">
+                            <i class="fa-solid fa-xmark text-xs"></i>
+                        </button>
                     </div>
                 </div>
 
-                <div class="pt-2 flex justify-end space-x-2">
-                    <button type="button" id="cancel-btn" class="px-4 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">キャンセル</button>
-                    <button type="submit" id="save-btn" class="px-5 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-xl text-sm font-medium transition shadow-sm flex items-center space-x-1.5">
-                        <i class="fa-solid fa-cloud-arrow-up text-xs"></i>
-                        <span>スプレッドシートへ保存</span>
+                <!-- フッターボタン -->
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closePromptModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
+                        キャンセル
+                    </button>
+                    <button type="submit" class="px-5 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm transition-all">
+                        保存する
                     </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Gemini In-App Image Generation Modal -->
-    <div id="gemini-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative overflow-hidden">
-            <button id="close-gemini-modal" class="absolute right-4 top-4 text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 transition z-10">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-
-            <div class="flex items-center space-x-2.5 mb-4">
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-sm">
-                    <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
-                </div>
+    <!-- GAS 設定モーダル -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+                <h3 class="text-lg font-bold text-slate-800">Google スプレッドシート連携</h3>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    デプロイした GAS (Google Apps Script) のウェブアプリ URL を設定すると、Google スプレッドシートとデータを完全同期できます。
+                </p>
                 <div>
-                    <h3 class="font-bold text-slate-900 text-base">Gemini AI アプリ内画像生成</h3>
-                    <p class="text-xs text-slate-500">Gemini 3.1 Flash Image でリアルタイム生成 (Image-to-Image対応)</p>
+                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">GAS Web App URL</label>
+                    <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/.../exec" 
+                        class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
                 </div>
-            </div>
-
-            <!-- Prompt Preview -->
-            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-3">
-                <p class="text-[11px] font-semibold text-slate-500 uppercase mb-1">使用プロンプト</p>
-                <p id="gemini-active-prompt" class="text-xs font-mono text-slate-700 max-h-20 overflow-y-auto break-words"></p>
-            </div>
-
-            <!-- Extra Custom Text / Prompt Input -->
-            <div class="mb-3">
-                <div class="flex items-center justify-between mb-1">
-                    <label class="block text-xs font-semibold text-slate-600 uppercase">追加テキスト・指定 (任意)</label>
-                    <span class="text-[10px] text-indigo-600 font-medium">※タイトル・日付・カラー等の文字指定</span>
-                </div>
-                <input type="text" id="gemini-extra-prompt" placeholder="例: タイトル「SEOUL TRIP」、日付「2026.09.10」、青系の淡いトーン" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white">
-            </div>
-
-            <!-- Source Image Upload / Drag & Drop for Image-to-Image -->
-            <div class="mb-3">
-                <div class="flex items-center justify-between mb-1">
-                    <label class="block text-xs font-semibold text-slate-600 uppercase">元画像 / 参照画像 (任意)</label>
-                    <span class="text-[10px] text-indigo-600 font-medium">※画像添付でImage-to-Image変換</span>
-                </div>
-
-                <div id="gemini-source-dropzone" class="border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-xl p-3 text-center cursor-pointer bg-slate-50 hover:bg-indigo-50/20 transition group relative">
-                    <input type="file" id="gemini-source-file-input" accept="image/*" class="hidden">
-                    
-                    <div id="gemini-source-empty" class="flex items-center justify-center space-x-2 py-1">
-                        <i class="fa-solid fa-image text-slate-400 group-hover:text-indigo-500 text-sm transition"></i>
-                        <span class="text-xs text-slate-500 font-medium">クリックまたは画像をドロップして添付</span>
-                    </div>
-
-                    <div id="gemini-source-preview-box" class="hidden flex items-center justify-between bg-white p-1.5 rounded-lg border border-slate-200">
-                        <div class="flex items-center space-x-2.5 overflow-hidden">
-                            <img id="gemini-source-preview-img" src="" class="w-10 h-10 rounded-md object-cover border border-slate-200 flex-shrink-0" alt="Source Preview">
-                            <div class="text-left overflow-hidden">
-                                <p class="text-xs font-semibold text-slate-700 truncate">添付画像あり</p>
-                                <p class="text-[10px] text-slate-400">Geminiへプロンプトと一緒に送信されます</p>
-                            </div>
-                        </div>
-                        <button type="button" id="gemini-remove-source-btn" class="text-slate-400 hover:text-red-500 w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-xs transition">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Aspect Ratio Selector -->
-            <div class="mb-4">
-                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">アスペクト比 (縦横比)</label>
-                <div class="grid grid-cols-4 gap-2 text-xs font-medium">
-                    <button type="button" class="aspect-btn active py-1.5 border rounded-lg text-center bg-indigo-50 border-indigo-500 text-indigo-700" data-aspect="1:1">1:1 (正方形)</button>
-                    <button type="button" class="aspect-btn py-1.5 border rounded-lg text-center border-slate-200 text-slate-600 hover:bg-slate-50" data-aspect="4:3">4:3 (横長)</button>
-                    <button type="button" class="aspect-btn py-1.5 border rounded-lg text-center border-slate-200 text-slate-600 hover:bg-slate-50" data-aspect="16:9">16:9 (ワイド)</button>
-                    <button type="button" class="aspect-btn py-1.5 border rounded-lg text-center border-slate-200 text-slate-600 hover:bg-slate-50" data-aspect="9:16">9:16 (縦長)</button>
-                </div>
-            </div>
-
-            <!-- Image Output & Loading Area -->
-            <div id="gemini-output-box" class="relative w-full h-56 bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center justify-center overflow-hidden mb-4">
-                <div id="gemini-status-idle" class="text-center p-4">
-                    <i class="fa-solid fa-sparkles text-3xl text-indigo-400 mb-2"></i>
-                    <p class="text-xs font-medium text-slate-600">「生成を開始」ボタンを押すと画像を作成します</p>
-                </div>
-
-                <div id="gemini-status-loading" class="hidden text-center p-4">
-                    <i class="fa-solid fa-circle-notch fa-spin text-3xl text-indigo-600 mb-3"></i>
-                    <p class="text-xs font-semibold text-slate-800 mb-0.5">Gemini AIが画像をレンダリング中...</p>
-                    <p class="text-[11px] text-slate-500">数秒程度かかります</p>
-                </div>
-
-                <img id="gemini-result-img" class="hidden w-full h-full object-contain" src="" alt="Gemini Generated Image">
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="flex items-center justify-between gap-2">
-                <div class="text-[11px] text-slate-500 flex items-center">
-                    <i class="fa-solid fa-circle-info text-indigo-500 mr-1"></i>
-                    <span>Gemini API直接連携</span>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <button id="gemini-apply-btn" class="hidden px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-medium transition shadow-sm flex items-center space-x-1">
-                        <i class="fa-solid fa-check"></i>
-                        <span>カードの参考画像に設定</span>
-                    </button>
-                    <button id="gemini-start-gen-btn" class="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-medium transition shadow-md flex items-center space-x-1.5">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i>
-                        <span>生成を開始</span>
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <button onclick="saveGasSettings()" class="w-full py-2.5 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm transition-all">
+                        URLを保存して同期
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Custom Delete Confirmation Modal -->
-    <div id="delete-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl relative text-center">
-            <div class="w-12 h-12 rounded-full bg-red-100 text-red-500 flex items-center justify-center mx-auto mb-4 text-xl">
-                <i class="fa-solid fa-trash-can"></i>
-            </div>
-            <h3 class="text-base font-bold text-slate-900 mb-1">プロンプトの削除</h3>
-            <p class="text-xs text-slate-500 mb-6">このプロンプトメモをスプレッドシートから削除してもよろしいですか？</p>
-            <div class="flex items-center justify-center space-x-3">
-                <button id="cancel-delete-btn" class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-50 transition">キャンセル</button>
-                <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-medium transition shadow-sm">削除する</button>
-            </div>
-        </div>
+    <!-- トースト通知 -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg z-50 transform translate-y-10 opacity-0 pointer-events-none transition-all duration-300 flex items-center gap-2">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+        <span id="toastMessage">コピーしました</span>
     </div>
 
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 transition-all duration-300 transform translate-y-20 opacity-0 z-50 pointer-events-none">
-        <i class="fa-solid fa-circle-check text-green-400"></i>
-        <span id="toast-message" class="text-sm font-medium">クリップボードにコピーしました！</span>
-    </div>
-
-    <!-- Application Script -->
     <script>
-        // Google Apps Script Deploy Web App URL
-        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyfLxct_Hx4PX6FvvEZrAAbzpfK5SDc-fauoHpPCx6bX86U9CoXY7o-YXykCcqdY9Bi/exec';
+        // デフォルトGAS URL
+        const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbyfLxct_Hx4PX6FvvEZrAAbzpfK5SDc-fauoHpPCx6bX86U9CoXY7o-YXykCcqdY9Bi/exec';
+        
+        let GAS_WEB_APP_URL = localStorage.getItem('GAS_WEB_APP_URL') || DEFAULT_GAS_URL;
+        let prompts = [];
+        let currentCategory = 'すべて';
 
-        // Default Prompts Preset
+        // 初期プロンプトサンプルデータ
         const defaultPrompts = [
             {
-                id: 'default-1',
-                title: 'マガジン風 4分割コラージュ',
-                category: 'マガジン風',
-                tags: ['4分割', 'カフェ', 'ミニマル', 'エディトリアル'],
-                prompt: 'A high-fashion magazine layout photo collage featuring 4 distinct square images arranged in a modern 2x2 grid with subtle white borders. Soft aesthetic natural lighting, minimal typography overlay in serif font, neutral tones, editorial style.',
-                note: 'カフェ写真やライフスタイル写真4枚のコラージュに最適。',
-                imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&auto=format&fit=crop'
-            },
-            {
-                id: 'default-2',
-                title: 'レトロフィルム・ポラロイド3連',
-                category: 'フィルム・レトロ',
-                tags: ['ポラロイド', 'エモい', 'フィルム', '3連'],
-                prompt: 'A vintage 35mm film photograph aesthetic, 3 polaroid photos neatly laid out side-by-side on a textured linen table background, soft shadow effect, film grain, light leaks, nostalgic warm color grade.',
-                note: '旅行の思い出や日常スナップに使えるポラロイド風3連レイアウト。',
-                imageUrl: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=600&auto=format&fit=crop'
-            },
-            {
-                id: 'default-3',
-                title: 'おしゃれSNSストーリーズ・縦型ムードボード',
-                category: 'SNS・ストーリーズ',
-                tags: ['9:16', 'ストーリーズ', 'コラージュ', 'ベージュ'],
-                prompt: 'A sleek 9:16 vertical moodboard photo collage for Instagram story. Asymmetrical composition combining 3 photos of aesthetic architectural details and fashion outfit, soft beige backdrop, paper tear texture edges, elegant serif text annotations.',
-                note: 'インスタストーリーズにぴったりな9:16縦長ムードボード風レイアウト。',
-                imageUrl: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&auto=format&fit=crop'
-            },
-            {
-                id: 'default-4',
-                title: '洗練された極細白額縁フレーム',
-                category: 'ミニマル・額縁',
-                tags: ['額縁', '1:1', 'ミニマル', 'アート'],
-                prompt: 'A minimalist aesthetic photo centered with a generous white mat board frame, clean architectural interior shot, 1:1 aspect ratio, subtle drop shadow, artistic gallery display style, crisp daylight.',
-                note: '1枚写真をアートギャラリーの額縁に入れて見せたい時のプロンプト。',
-                imageUrl: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=600&auto=format&fit=crop'
-            },
-            {
-                id: 'default-5',
-                title: '韓国カフェ風・ライフスタイルコラージュ',
-                category: 'グリッド・コラージュ',
-                tags: ['韓国風', 'カフェ', '淡色', 'グリッド'],
-                prompt: 'An aesthetic grid photo collage featuring a cup of latte art, aesthetic pastry, table setup, and interior design. Soft pastel color palette, clean grid division with thin rounded white gaps, high quality editorial shot.',
-                note: '韓国っぽカフェや淡色女子系の写真と相性が良いレイアウトプロンプト。',
-                imageUrl: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&auto=format&fit=crop'
+                id: 'sample-1',
+                title: 'シネマティックポートレート',
+                category: '人物・ポーズ',
+                tags: ['人物', 'シネマティック', '8k'],
+                prompt: 'Cinematic portrait of a young woman standing in neon-lit city street at night, shallow depth of field, 85mm lens, atmospheric lighting, high detail, photorealistic --ar 16:9',
+                note: 'MidjourneyやStable Diffusionにおすすめ',
+                imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
+                updatedAt: new Date().toISOString()
             }
         ];
 
-        // Application State
-        let prompts = [];
-        let activeCategory = 'すべて';
-        let searchQuery = '';
-        let currentUploadedImageBase64 = '';
-        let promptToDeleteId = null;
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('gasUrlInput').value = GAS_WEB_APP_URL;
+            loadPrompts();
+        });
 
-        const categories = ['すべて', 'マガジン風', 'グリッド・コラージュ', 'フィルム・レトロ', 'ミニマル・額縁', 'ムードボード', 'SNS・ストーリーズ', 'デジカメ・Y2K', 'その他'];
-
-        // DOM Elements
-        const promptsGrid = document.getElementById('prompts-grid');
-        const emptyState = document.getElementById('empty-state');
-        const categoryFiltersContainer = document.getElementById('category-filters');
-        const searchInput = document.getElementById('search-input');
-        const modal = document.getElementById('modal');
-        const promptForm = document.getElementById('prompt-form');
-        const openModalBtn = document.getElementById('open-add-modal');
-        const closeModalBtn = document.getElementById('close-modal');
-        const cancelBtn = document.getElementById('cancel-btn');
-        const resetFilterBtn = document.getElementById('reset-filter-btn');
-        const syncStatusText = document.getElementById('sync-status-text');
-
-        // Modal Image Dropzone DOM Elements
-        const dropzone = document.getElementById('dropzone');
-        const imageFileInput = document.getElementById('input-image-file');
-        const dropzonePrompt = document.getElementById('dropzone-prompt');
-        const imagePreviewContainer = document.getElementById('image-preview-container');
-        const imagePreview = document.getElementById('image-preview');
-        const removeImageBtn = document.getElementById('remove-image-btn');
-        const inputImageUrl = document.getElementById('input-image');
-
-        // Delete Modal DOM Elements
-        const deleteModal = document.getElementById('delete-modal');
-        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
-        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
-
-        // Local Storage Sync Backup
-        function saveToLocalStorage() {
-            try {
-                localStorage.setItem('layout_prompts', JSON.stringify(prompts));
-            } catch (e) {}
+        // データの読み込み (GAS優先 -> LocalStorageバックアップ)
+        async function loadPrompts() {
+            if (GAS_WEB_APP_URL) {
+                await fetchPromptsFromGAS();
+            } else {
+                loadFromLocalStorage();
+            }
         }
 
-        // Load All Prompts from GAS
-        async function fetchPromptsFromGAS() {
-            syncStatusText.textContent = 'スプレッドシートから読み込み中...';
-            try {
-                const response = await fetch(`${GAS_WEB_APP_URL}?action=getAll`);
-                const res = await response.json();
-                if (res.status === 'success' && Array.isArray(res.data)) {
-                    if (res.data.length === 0) {
-                        // SpreadSheet is empty, initialize with defaults
-                        prompts = [...defaultPrompts];
-                        await saveAllPromptsToGAS(prompts);
-                    } else {
-                        prompts = res.data;
-                    }
-                    saveToLocalStorage();
-                    syncStatusText.textContent = 'GASスプレッドシート完全同期中';
-                } else {
-                    throw new Error(res.message || 'データ取得エラー');
-                }
-            } catch (err) {
-                console.warn('GAS Fetch failed, fallback to LocalStorage:', err);
-                syncStatusText.textContent = 'ローカル保持モード (オフライン)';
-                const localData = localStorage.getItem('layout_prompts');
-                if (localData) {
-                    prompts = JSON.parse(localData);
-                } else {
+        // LocalStorageからの読み込み
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('PROMPTS_DATA');
+            if (saved) {
+                try {
+                    prompts = JSON.parse(saved);
+                } catch(e) {
                     prompts = [...defaultPrompts];
                 }
+            } else {
+                prompts = [...defaultPrompts];
             }
             renderCategories();
             renderPrompts();
         }
 
-        // Save Single Prompt to GAS
-        async function savePromptToGAS(promptItem) {
-            syncStatusText.textContent = '保存中...';
+        // GASから全プロンプトを取得（最新順を保持）
+        async function fetchPromptsFromGAS() {
+            const syncStatusText = document.getElementById('syncStatusText');
+            const syncStatusDot = document.getElementById('syncStatusDot');
+            
+            syncStatusText.textContent = '同期中...';
+            syncStatusDot.className = 'w-2 h-2 rounded-full bg-amber-500 animate-ping';
+
             try {
-                const response = await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({
-                        action: 'save',
-                        prompt: promptItem
-                    })
-                });
+                const response = await fetch(`${GAS_WEB_APP_URL}?action=getAll`);
                 const res = await response.json();
-                if (res.status === 'success') {
-                    syncStatusText.textContent = 'GASスプレッドシート完全同期中';
-                    return true;
-                }
-            } catch (err) {
-                console.error('GAS Save error:', err);
-                syncStatusText.textContent = 'ローカル保持モード';
-            }
-            return false;
-        }
-
-        // Delete Single Prompt from GAS
-        async function deletePromptFromGAS(id) {
-            syncStatusText.textContent = '削除処理中...';
-            try {
-                const response = await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({
-                        action: 'delete',
-                        id: id
-                    })
-                });
-                const res = await response.json();
-                if (res.status === 'success') {
-                    syncStatusText.textContent = 'GASスプレッドシート完全同期中';
-                    return true;
-                }
-            } catch (err) {
-                console.error('GAS Delete error:', err);
-                syncStatusText.textContent = 'ローカル保持モード';
-            }
-            return false;
-        }
-
-        // Batch Save All Prompts to GAS
-        async function saveAllPromptsToGAS(promptsArray) {
-            try {
-                await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({
-                        action: 'saveAll',
-                        prompts: promptsArray
-                    })
-                });
-            } catch (err) {
-                console.error('GAS saveAll error:', err);
-            }
-        }
-
-        // Image Compression Helper
-        function compressAndProcessImage(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        let width = img.width;
-                        let height = img.height;
-                        const maxDim = 800; // max width/height
-
-                        if (width > maxDim || height > maxDim) {
-                            if (width > height) {
-                                height = Math.round((height * maxDim) / width);
-                                width = maxDim;
-                            } else {
-                                width = Math.round((width * maxDim) / height);
-                                height = maxDim;
-                            }
-                        }
-
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        resolve(canvas.toDataURL('image/jpeg', 0.82));
-                    };
-                    img.onerror = reject;
-                    img.src = e.target.result;
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-        }
-
-        // Preview Handlers
-        function setImagePreview(src) {
-            if (src) {
-                imagePreview.src = src;
-                imagePreviewContainer.classList.remove('hidden');
-                dropzonePrompt.classList.add('hidden');
-                currentUploadedImageBase64 = src;
-            } else {
-                imagePreview.src = '';
-                imagePreviewContainer.classList.add('hidden');
-                dropzonePrompt.classList.remove('hidden');
-                currentUploadedImageBase64 = '';
-                imageFileInput.value = '';
-            }
-        }
-
-        // Dropzone & File Event Listeners
-        dropzone.addEventListener('click', (e) => {
-            if (e.target.closest('#remove-image-btn')) return;
-            imageFileInput.click();
-        });
-
-        imageFileInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                try {
-                    const compressedBase64 = await compressAndProcessImage(file);
-                    setImagePreview(compressedBase64);
-                    inputImageUrl.value = '';
-                } catch (err) {
-                    showToast('画像の読み込みに失敗しました');
-                }
-            }
-        });
-
-        removeImageBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            setImagePreview('');
-        });
-
-        // Drag and Drop
-        dropzone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropzone.classList.add('border-pink-500', 'bg-pink-50/50');
-        });
-
-        dropzone.addEventListener('dragleave', () => {
-            dropzone.classList.remove('border-pink-500', 'bg-pink-50/50');
-        });
-
-        dropzone.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            dropzone.classList.remove('border-pink-500', 'bg-pink-50/50');
-            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                const file = e.dataTransfer.files[0];
-                if (file.type.startsWith('image/')) {
-                    try {
-                        const compressedBase64 = await compressAndProcessImage(file);
-                        setImagePreview(compressedBase64);
-                        inputImageUrl.value = '';
-                    } catch (err) {
-                        showToast('画像の読み込みに失敗しました');
+                
+                if (res.status === 'success' && Array.isArray(res.data)) {
+                    if (res.data.length === 0) {
+                        prompts = [...defaultPrompts];
+                        await saveAllPromptsToGAS(prompts);
+                    } else {
+                        // GASからのデータを逆順にして最新が先頭に来るようにセット
+                        prompts = res.data.reverse();
                     }
+                    saveToLocalStorage();
+                    syncStatusText.textContent = 'GAS完全同期済み';
+                    syncStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+                } else {
+                    throw new Error(res.message || '取得失敗');
                 }
+            } catch (err) {
+                console.warn('GAS Fetch Error:', err);
+                syncStatusText.textContent = 'オフライン（ローカル）';
+                syncStatusDot.className = 'w-2 h-2 rounded-full bg-slate-400';
+                loadFromLocalStorage();
             }
-        });
-
-        inputImageUrl.addEventListener('input', (e) => {
-            const url = e.target.value.trim();
-            if (url) {
-                setImagePreview(url);
-            } else if (!currentUploadedImageBase64.startsWith('data:')) {
-                setImagePreview('');
-            }
-        });
-
-        // Render Category Buttons
-        function renderCategories() {
-            categoryFiltersContainer.innerHTML = '';
-            categories.forEach(cat => {
-                const btn = document.createElement('button');
-                const isActive = activeCategory === cat;
-                btn.className = `px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 ${
-                    isActive 
-                        ? 'bg-pink-600 text-white shadow-sm' 
-                        : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                }`;
-                btn.textContent = cat;
-                btn.addEventListener('click', () => {
-                    activeCategory = cat;
-                    renderCategories();
-                    renderPrompts();
-                });
-                categoryFiltersContainer.appendChild(btn);
-            });
+            renderCategories();
+            renderPrompts();
         }
 
-        // Render Prompts Grid
+        // カテゴリボタン描画
+        function renderCategories() {
+            const container = document.getElementById('categoryFilterContainer');
+            const categories = ['すべて', '人物・ポーズ', 'レイアウト・構図', '背景・風景', '照明・シネマ', 'スタイル・画風', 'その他'];
+            
+            container.innerHTML = categories.map(cat => `
+                <button onclick="setCategory('${cat}')" 
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
+                        currentCategory === cat 
+                        ? 'bg-slate-900 text-white shadow-sm' 
+                        : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                    }">
+                    ${cat}
+                </button>
+            `).join('');
+        }
+
+        function setCategory(cat) {
+            currentCategory = cat;
+            renderCategories();
+            renderPrompts();
+        }
+
+        // タイル形式（独立したカード）一覧の描画
         function renderPrompts() {
-            const filtered = prompts.filter(p => {
-                const matchesCategory = activeCategory === 'すべて' || p.category === activeCategory;
-                const q = searchQuery.toLowerCase().trim();
-                const matchesSearch = !q || 
-                    p.title.toLowerCase().includes(q) ||
-                    p.prompt.toLowerCase().includes(q) ||
-                    (p.note && p.note.toLowerCase().includes(q)) ||
-                    (p.tags && p.tags.some(t => t.toLowerCase().includes(q))) ||
-                    p.category.toLowerCase().includes(q);
-                return matchesCategory && matchesSearch;
+            const grid = document.getElementById('promptGrid');
+            const emptyState = document.getElementById('emptyState');
+            const searchKeyword = document.getElementById('searchInput').value.toLowerCase().trim();
+
+            const filtered = prompts.filter(item => {
+                const matchCategory = (currentCategory === 'すべて' || item.category === currentCategory);
+                const matchSearch = !searchKeyword || 
+                    item.title.toLowerCase().includes(searchKeyword) ||
+                    item.prompt.toLowerCase().includes(searchKeyword) ||
+                    (item.tags && item.tags.some(t => t.toLowerCase().includes(searchKeyword)));
+                return matchCategory && matchSearch;
             });
 
             if (filtered.length === 0) {
-                promptsGrid.innerHTML = '';
+                grid.innerHTML = '';
                 emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
                 return;
             }
 
             emptyState.classList.add('hidden');
-            promptsGrid.innerHTML = filtered.map(p => {
-                const tagsHtml = (p.tags || []).map(tag => 
-                    `<span class="inline-block bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded-md font-medium">#${escapeHtml(tag)}</span>`
-                ).join(' ');
+            emptyState.classList.remove('flex');
 
-                const imgHtml = p.imageUrl ? `
-                    <div class="relative w-full h-48 bg-slate-100 overflow-hidden border-b border-slate-100">
-                        <img src="${escapeHtml(p.imageUrl)}" alt="${escapeHtml(p.title)}" class="w-full h-full object-cover transition duration-300 hover:scale-105" onerror="this.src='https://placehold.co/600x400/f1f5f9/94a3b8?text=Image+Load+Error'">
-                    </div>
-                ` : '';
+            // タイルひとつひとつを確実に独立して描画（マトリョーシカ状の入れ子を完全解消）
+            grid.innerHTML = filtered.map(item => `
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden group">
+                    <!-- 画像エリア -->
+                    ${item.imageUrl ? `
+                        <div class="relative w-full h-44 bg-slate-100 overflow-hidden border-b border-slate-100">
+                            <img src="${item.imageUrl}" alt="${escapeHtml(item.title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.parentElement.style.display='none'">
+                        </div>
+                    ` : ''}
 
-                return `
-                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden group">
-                        ${imgHtml}
-                        <div class="p-5 flex flex-col flex-grow">
-                            <div class="flex items-center justify-between gap-2 mb-2">
-                                <span class="text-[11px] font-semibold tracking-wide uppercase px-2.5 py-0.5 rounded-full bg-pink-50 text-pink-600 border border-pink-100">
-                                    ${escapeHtml(p.category)}
+                    <div class="p-5 flex-1 flex flex-col justify-between gap-4">
+                        <div class="space-y-3">
+                            <!-- カテゴリ & 編集/削除 -->
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100/60">
+                                    ${escapeHtml(item.category || 'その他')}
                                 </span>
-                                <div class="flex items-center space-x-1 opacity-80 group-hover:opacity-100 transition">
-                                    <button onclick="editPrompt('${p.id}')" title="編集" class="w-7 h-7 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center text-xs transition">
-                                        <i class="fa-solid fa-pen"></i>
+                                <div class="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                                    <button onclick="editPrompt('${item.id}')" class="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors" title="編集">
+                                        <i class="fa-solid fa-pen text-xs"></i>
                                     </button>
-                                    <button onclick="deletePrompt('${p.id}')" title="削除" class="w-7 h-7 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 flex items-center justify-center text-xs transition">
-                                        <i class="fa-solid fa-trash-can"></i>
+                                    <button onclick="deletePromptItem('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition-colors" title="削除">
+                                        <i class="fa-solid fa-trash text-xs"></i>
                                     </button>
                                 </div>
                             </div>
 
-                            <h3 class="font-bold text-slate-900 text-base mb-2 leading-snug">${escapeHtml(p.title)}</h3>
+                            <!-- タイトル -->
+                            <h4 class="text-base font-bold text-slate-800 leading-snug">${escapeHtml(item.title)}</h4>
 
-                            ${tagsHtml ? `<div class="flex flex-wrap gap-1.5 mb-3">${tagsHtml}</div>` : ''}
-
-                            <div class="relative my-2 bg-slate-900 text-slate-200 rounded-xl p-3 font-mono text-xs leading-relaxed border border-slate-800 flex-grow">
-                                <div class="pr-8 text-slate-300 break-words select-all line-clamp-4">${escapeHtml(p.prompt)}</div>
-                                <button onclick="copyToClipboard(\`${escapeJsString(p.prompt)}\`)" title="プロンプトをコピー" class="absolute top-2.5 right-2.5 bg-slate-800 hover:bg-pink-600 text-slate-300 hover:text-white p-1.5 rounded-lg text-xs transition shadow-sm flex items-center justify-center">
-                                    <i class="fa-regular fa-copy"></i>
-                                </button>
+                            <!-- プロンプト本文 -->
+                            <div class="bg-slate-50 border border-slate-200/70 rounded-xl p-3">
+                                <p class="font-mono text-xs text-slate-700 leading-relaxed line-clamp-3 select-all">${escapeHtml(item.prompt)}</p>
                             </div>
 
-                            ${p.note ? `
-                                <div class="mt-2 text-xs text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-start space-x-2">
-                                    <i class="fa-solid fa-lightbulb text-amber-500 mt-0.5 flex-shrink-0"></i>
-                                    <span class="leading-relaxed">${escapeHtml(p.note)}</span>
-                                </div>
+                            <!-- メモやタグ（存在する場合） -->
+                            ${item.note ? `
+                                <p class="text-xs text-slate-500 italic"><i class="fa-regular fa-note-sticky mr-1"></i>${escapeHtml(item.note)}</p>
                             ` : ''}
 
-                            <!-- AI Launch Buttons -->
-                            <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-end gap-1.5">
-                                <button onclick="copyToClipboard(\`${escapeJsString(p.prompt)}\`)" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1">
-                                    <i class="fa-regular fa-copy text-xs"></i>
-                                    <span>コピー</span>
-                                </button>
-                                <button onclick="openGeminiInAppModal(\`${escapeJsString(p.prompt)}\`, '${p.id}')" title="アプリ内でGemini AI画像を即時作成" class="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-medium transition flex items-center space-x-1">
-                                    <i class="fa-solid fa-wand-magic-sparkles text-indigo-600 text-xs"></i>
-                                    <span>Gemini</span>
-                                </button>
-                                <button onclick="openInChatGPT(\`${escapeJsString(p.prompt)}\`)" title="コピーしてChatGPTを開く" class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-medium transition flex items-center space-x-1">
-                                    <i class="fa-solid fa-bolt text-emerald-600 text-xs"></i>
-                                    <span>ChatGPT</span>
-                                </button>
-                            </div>
+                            ${item.tags && item.tags.length > 0 ? `
+                                <div class="flex flex-wrap gap-1 pt-1">
+                                    ${item.tags.map(tag => `<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">#${escapeHtml(tag)}</span>`).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <!-- アクションボタングループ (コピー, Gemini, ChatGPT) -->
+                        <div class="pt-3 border-t border-slate-100 flex items-center gap-1.5">
+                            <button onclick="copyPromptText('${escapeJs(item.prompt)}')" class="flex-1 inline-flex items-center justify-center gap-1 bg-slate-900 hover:bg-slate-800 text-white font-medium py-2 px-2.5 rounded-xl text-xs transition-all shadow-sm active:scale-95" title="クリップボードにコピー">
+                                <i class="fa-regular fa-copy"></i>
+                                <span>コピー</span>
+                            </button>
+                            <button onclick="openInGemini('${escapeJs(item.prompt)}')" class="flex-1 inline-flex items-center justify-center gap-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-2 px-2 rounded-xl text-xs transition-all border border-indigo-200/60 active:scale-95" title="プロンプトをコピーしてGeminiを開く">
+                                <i class="fa-solid fa-sparkles text-indigo-600"></i>
+                                <span>Gemini</span>
+                            </button>
+                            <button onclick="openInChatGPT('${escapeJs(item.prompt)}')" class="flex-1 inline-flex items-center justify-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold py-2 px-2 rounded-xl text-xs transition-all border border-emerald-200/60 active:scale-95" title="プロンプトをコピーしてChatGPTを開く">
+                                <i class="fa-solid fa-robot text-emerald-600"></i>
+                                <span>ChatGPT</span>
+                            </button>
                         </div>
                     </div>
-                `;
-            }).join('');
+                </div>
+            `).join('');
         }
 
-        // Direct Open AI Services
+        // プロンプトをコピーして Gemini Webサイトへ移動
+        function openInGemini(text) {
+            copyToClipboard(text);
+            showToast('コピーしました！Geminiを開きます');
+            const targetUrl = 'https://gemini.google.com/?q=' + encodeURIComponent(text);
+            setTimeout(() => {
+                window.open(targetUrl, '_blank');
+            }, 400);
+        }
+
+        // プロンプトをコピーして ChatGPT Webサイトへ移動（URLパラメータでプロンプトを自動セット）
         function openInChatGPT(text) {
-            copyToClipboard(text, 'プロンプトをコピーして入力状態でChatGPTを開きました！');
-            const url = `https://chatgpt.com/?q=${encodeURIComponent(text)}`;
-            window.open(url, '_blank');
+            copyToClipboard(text);
+            showToast('コピーしました！ChatGPTを開きます');
+            const targetUrl = 'https://chatgpt.com/?q=' + encodeURIComponent(text);
+            setTimeout(() => {
+                window.open(targetUrl, '_blank');
+            }, 400);
         }
 
-        // Gemini In-App Image Generator Logic
-        let activeGeminiPrompt = '';
-        let activeGeminiTargetId = '';
-        let activeAspect = '1:1';
-        let currentGeneratedBase64 = '';
-        let currentGeminiSourceImageBase64 = '';
-
-        const geminiModal = document.getElementById('gemini-modal');
-        const closeGeminiModalBtn = document.getElementById('close-gemini-modal');
-        const geminiActivePromptEl = document.getElementById('gemini-active-prompt');
-        const geminiStartGenBtn = document.getElementById('gemini-start-gen-btn');
-        const geminiApplyBtn = document.getElementById('gemini-apply-btn');
-        const geminiStatusIdle = document.getElementById('gemini-status-idle');
-        const geminiStatusLoading = document.getElementById('gemini-status-loading');
-        const geminiResultImg = document.getElementById('gemini-result-img');
-
-        // Source Image DOM Elements in Gemini Modal
-        const geminiSourceDropzone = document.getElementById('gemini-source-dropzone');
-        const geminiSourceFileInput = document.getElementById('gemini-source-file-input');
-        const geminiSourceEmpty = document.getElementById('gemini-source-empty');
-        const geminiSourcePreviewBox = document.getElementById('gemini-source-preview-box');
-        const geminiSourcePreviewImg = document.getElementById('gemini-source-preview-img');
-        const geminiRemoveSourceBtn = document.getElementById('gemini-remove-source-btn');
-
-        function setGeminiSourcePreview(base64Data) {
-            if (base64Data) {
-                currentGeminiSourceImageBase64 = base64Data;
-                geminiSourcePreviewImg.src = base64Data;
-                geminiSourceEmpty.classList.add('hidden');
-                geminiSourcePreviewBox.classList.remove('hidden');
-            } else {
-                currentGeminiSourceImageBase64 = '';
-                geminiSourcePreviewImg.src = '';
-                geminiSourceEmpty.classList.remove('hidden');
-                geminiSourcePreviewBox.classList.add('hidden');
-                geminiSourceFileInput.value = '';
-            }
+        // プロンプトテキストのみコピー
+        function copyPromptText(text) {
+            copyToClipboard(text);
+            showToast('クリップボードにコピーしました');
         }
 
-        geminiSourceDropzone.addEventListener('click', (e) => {
-            if (e.target.closest('#gemini-remove-source-btn')) return;
-            geminiSourceFileInput.click();
-        });
-
-        geminiSourceFileInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                try {
-                    const compressedBase64 = await compressAndProcessImage(file);
-                    setGeminiSourcePreview(compressedBase64);
-                } catch (err) {
-                    showToast('元画像の読み込みに失敗しました');
-                }
-            }
-        });
-
-        geminiRemoveSourceBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            setGeminiSourcePreview('');
-        });
-
-        // Drag & Drop for Gemini Source Dropzone
-        geminiSourceDropzone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            geminiSourceDropzone.classList.add('border-indigo-500', 'bg-indigo-50/40');
-        });
-
-        geminiSourceDropzone.addEventListener('dragleave', () => {
-            geminiSourceDropzone.classList.remove('border-indigo-500', 'bg-indigo-50/40');
-        });
-
-        geminiSourceDropzone.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            geminiSourceDropzone.classList.remove('border-indigo-500', 'bg-indigo-50/40');
-            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                const file = e.dataTransfer.files[0];
-                if (file.type.startsWith('image/')) {
-                    try {
-                        const compressedBase64 = await compressAndProcessImage(file);
-                        setGeminiSourcePreview(compressedBase64);
-                    } catch (err) {
-                        showToast('元画像の読み込みに失敗しました');
-                    }
-                }
-            }
-        });
-
-        function openGeminiInAppModal(promptText, cardId) {
-            activeGeminiPrompt = promptText;
-            activeGeminiTargetId = cardId;
-            geminiActivePromptEl.textContent = promptText;
-
-            const extraInput = document.getElementById('gemini-extra-prompt');
-            if (extraInput) extraInput.value = '';
-
-            currentGeneratedBase64 = '';
-            
-            // Check if target card already has a source Base64 image
-            const card = prompts.find(p => p.id === cardId);
-            if (card && card.imageUrl && card.imageUrl.startsWith('data:image/')) {
-                setGeminiSourcePreview(card.imageUrl);
-            } else {
-                setGeminiSourcePreview('');
-            }
-
-            // Reset UI State
-            geminiStatusIdle.classList.remove('hidden');
-            geminiStatusLoading.classList.add('hidden');
-            geminiResultImg.classList.add('hidden');
-            geminiResultImg.src = '';
-            geminiApplyBtn.classList.add('hidden');
-            
-            geminiModal.classList.remove('hidden');
-        }
-
-        closeGeminiModalBtn.addEventListener('click', () => {
-            geminiModal.classList.add('hidden');
-        });
-
-        // Aspect ratio buttons handler
-        document.querySelectorAll('.aspect-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.aspect-btn').forEach(b => {
-                    b.classList.remove('bg-indigo-50', 'border-indigo-500', 'text-indigo-700');
-                    b.classList.add('border-slate-200', 'text-slate-600');
-                });
-                const target = e.currentTarget;
-                target.classList.remove('border-slate-200', 'text-slate-600');
-                target.classList.add('bg-indigo-50', 'border-indigo-500', 'text-indigo-700');
-                activeAspect = target.getAttribute('data-aspect');
-            });
-        });
-
-        // Call Gemini Image API (gemini-3.1-flash-image)
-        geminiStartGenBtn.addEventListener('click', async () => {
-            if (!activeGeminiPrompt) return;
-
-            geminiStatusIdle.classList.add('hidden');
-            geminiResultImg.classList.add('hidden');
-            geminiStatusLoading.classList.remove('hidden');
-            geminiStartGenBtn.disabled = true;
-            geminiStartGenBtn.classList.add('opacity-50');
+        // クリップボードコピー実行 (iFrame対応の安全処理)
+        function copyToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            textArea.style.opacity = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
 
             try {
-                // Combine main prompt with custom extra text/details
-                const extraText = document.getElementById('gemini-extra-prompt')?.value.trim() || '';
-                let fullPrompt = activeGeminiPrompt;
-                if (extraText) {
-                    fullPrompt += `\n\nAdditional text, title, date, or details to incorporate into the image/layout: ${extraText}`;
-                }
-
-                // Construct parts array
-                const parts = [{ text: fullPrompt }];
-
-                // If source image is present, include inlineData (Image-to-Image)
-                if (currentGeminiSourceImageBase64 && currentGeminiSourceImageBase64.startsWith('data:image/')) {
-                    const matches = currentGeminiSourceImageBase64.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
-                    if (matches && matches.length === 3) {
-                        const mimeType = matches[1];
-                        const pureBase64 = matches[2];
-                        parts.push({
-                            inlineData: {
-                                mimeType: mimeType,
-                                data: pureBase64
-                            }
-                        });
-                    }
-                }
-
-                const payload = {
-                    contents: [{
-                        role: 'user',
-                        parts: parts
-                    }],
-                    generationConfig: {
-                        responseModalities: ['IMAGE'],
-                        imageConfig: {
-                            aspectRatio: activeAspect
-                        }
-                    }
-                };
-
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`;
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP Error: ${response.status}`);
-                }
-
-                const result = await response.json();
-                const part = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-
-                if (part && part.inlineData && part.inlineData.data) {
-                    currentGeneratedBase64 = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-                    geminiResultImg.src = currentGeneratedBase64;
-                    geminiStatusLoading.classList.add('hidden');
-                    geminiResultImg.classList.remove('hidden');
-                    geminiApplyBtn.classList.remove('hidden');
-                    showToast('Gemini AIで画像を生成しました！');
-                } else {
-                    throw new Error('画像データが応答に含まれていません');
+                const successful = document.execCommand('copy');
+                if (!successful && navigator.clipboard) {
+                    navigator.clipboard.writeText(text).catch(() => {});
                 }
             } catch (err) {
-                console.error(err);
-                geminiStatusLoading.classList.add('hidden');
-                geminiStatusIdle.classList.remove('hidden');
-                showToast('画像の生成に失敗しました。時間をおいて再試行してください。');
-            } finally {
-                geminiStartGenBtn.disabled = false;
-                geminiStartGenBtn.classList.remove('opacity-50');
-            }
-        });
-
-        // Apply generated image as card preview image
-        geminiApplyBtn.addEventListener('click', async () => {
-            if (!currentGeneratedBase64 || !activeGeminiTargetId) return;
-            const card = prompts.find(p => p.id === activeGeminiTargetId);
-            if (card) {
-                card.imageUrl = currentGeneratedBase64;
-                saveToLocalStorage();
-                renderPrompts();
-                geminiModal.classList.add('hidden');
-                showToast('参考画像を更新・同期中...');
-                await savePromptToGAS(card);
-                showToast('参考画像を更新・スプレッドシートへ保存しました！');
-            }
-        });
-
-        // Toast Notification System
-        let toastTimeout;
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            const toastMessage = document.getElementById('toast-message');
-            toastMessage.textContent = message;
-            
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            toast.classList.add('translate-y-0', 'opacity-100');
-            
-            if (toastTimeout) clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 2800);
-        }
-
-        // Copy Clipboard Helper
-        function copyToClipboard(text, customMessage) {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = '0';
-            document.body.appendChild(textarea);
-            textarea.select();
-            try {
-                document.execCommand('copy');
-                showToast(customMessage || 'プロンプトをクリップボードにコピーしました！');
-            } catch (err) {
-                showToast('コピーに失敗しました');
-            } finally {
-                document.body.removeChild(textarea);
-            }
-        }
-
-        // Modal Controls
-        function openModal(isEdit = false) {
-            document.getElementById('modal-title').innerText = isEdit ? 'プロンプトを編集' : '新規プロンプト登録';
-            modal.classList.remove('hidden');
-        }
-
-        function closeModal() {
-            modal.classList.add('hidden');
-            promptForm.reset();
-            document.getElementById('prompt-id').value = '';
-            setImagePreview('');
-        }
-
-        // Delete Prompt Handlers
-        function deletePrompt(id) {
-            promptToDeleteId = id;
-            deleteModal.classList.remove('hidden');
-        }
-
-        cancelDeleteBtn.addEventListener('click', () => {
-            promptToDeleteId = null;
-            deleteModal.classList.add('hidden');
-        });
-
-        confirmDeleteBtn.addEventListener('click', async () => {
-            if (promptToDeleteId) {
-                const targetId = promptToDeleteId;
-                prompts = prompts.filter(p => p.id !== targetId);
-                saveToLocalStorage();
-                renderPrompts();
-                deleteModal.classList.add('hidden');
-                showToast('スプレッドシートから削除中...');
-                await deletePromptFromGAS(targetId);
-                showToast('削除しました');
-                promptToDeleteId = null;
-            }
-        });
-
-        // Edit Prompt
-        function editPrompt(id) {
-            const p = prompts.find(item => item.id === id);
-            if (!p) return;
-
-            document.getElementById('prompt-id').value = p.id;
-            document.getElementById('input-title').value = p.title;
-            document.getElementById('input-category').value = p.category;
-            document.getElementById('input-tags').value = p.tags ? p.tags.join(', ') : '';
-            document.getElementById('input-prompt').value = p.prompt;
-            document.getElementById('input-note').value = p.note || '';
-            
-            if (p.imageUrl) {
-                if (p.imageUrl.startsWith('data:')) {
-                    setImagePreview(p.imageUrl);
-                    inputImageUrl.value = '';
-                } else {
-                    inputImageUrl.value = p.imageUrl;
-                    setImagePreview(p.imageUrl);
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(text).catch(() => {});
                 }
-            } else {
-                setImagePreview('');
-                inputImageUrl.value = '';
+            } finally {
+                document.body.removeChild(textArea);
             }
-
-            openModal(true);
         }
 
-        // Handle Form Submit
-        promptForm.addEventListener('submit', async (e) => {
+        // モーダルの開閉
+        function openPromptModal(isEdit = false) {
+            if (!isEdit) {
+                document.getElementById('editPromptId').value = '';
+                document.getElementById('modalTitle').textContent = '新規プロンプトの作成';
+                document.getElementById('promptForm').reset();
+                clearImagePreview();
+            }
+            document.getElementById('promptModal').classList.remove('hidden');
+        }
+
+        function closePromptModal() {
+            document.getElementById('promptModal').classList.add('hidden');
+        }
+
+        // プロンプト保存処理（★新規データは常に配列の最上部（先頭）に追加）
+        async function handleFormSubmit(e) {
             e.preventDefault();
-            const id = document.getElementById('prompt-id').value;
-            const title = document.getElementById('input-title').value;
-            const category = document.getElementById('input-category').value;
-            const tags = document.getElementById('input-tags').value.split(',').map(t => t.trim()).filter(Boolean);
-            const promptText = document.getElementById('input-prompt').value;
-            const note = document.getElementById('input-note').value;
-            const imageUrl = currentUploadedImageBase64 || document.getElementById('input-image').value.trim();
 
-            let targetPrompt = null;
-            if (id) {
-                // Edit existing
-                const index = prompts.findIndex(p => p.id === id);
-                if (index !== -1) {
-                    targetPrompt = { id, title, category, tags, prompt: promptText, note, imageUrl };
-                    prompts[index] = targetPrompt;
-                }
+            const editId = document.getElementById('editPromptId').value;
+            const title = document.getElementById('promptTitleInput').value.trim();
+            const category = document.getElementById('promptCategoryInput').value;
+            const tagsStr = document.getElementById('promptTagsInput').value.trim();
+            const prompt = document.getElementById('promptContentInput').value.trim();
+            const note = document.getElementById('promptNoteInput').value.trim();
+            const imageUrl = document.getElementById('promptImageUrlInput').value.trim();
+
+            const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+            const promptData = {
+                id: editId || Date.now().toString(),
+                title,
+                category,
+                tags,
+                prompt,
+                note,
+                imageUrl,
+                updatedAt: new Date().toISOString()
+            };
+
+            if (editId) {
+                // 既存更新
+                const index = prompts.findIndex(p => p.id === editId);
+                if (index !== -1) prompts[index] = promptData;
             } else {
-                // Add new
-                targetPrompt = {
-                    id: Date.now().toString(),
-                    title,
-                    category,
-                    tags,
-                    prompt: promptText,
-                    note,
-                    imageUrl
-                };
-                prompts.unshift(targetPrompt);
+                // ★ 新規追加：常に最上部（配列の先頭 index:0）に追加
+                prompts.unshift(promptData);
             }
 
             saveToLocalStorage();
             renderPrompts();
-            closeModal();
-            showToast(id ? '更新中...' : '保存中...');
+            closePromptModal();
+            showToast(editId ? '更新しました' : '先頭に追加しました');
 
-            if (targetPrompt) {
-                await savePromptToGAS(targetPrompt);
-                showToast(id ? 'スプレッドシートを更新しました！' : 'スプレッドシートに保存しました！');
+            // GASと同期
+            if (GAS_WEB_APP_URL) {
+                savePromptToGAS(promptData);
             }
-        });
+        }
 
-        // Search Listener
-        searchInput.addEventListener('input', (e) => {
-            searchQuery = e.target.value;
+        // GASへの保存リクエスト
+        async function savePromptToGAS(promptData) {
+            try {
+                await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'save',
+                        prompt: promptData
+                    })
+                });
+            } catch (err) {
+                console.error('GAS Save Error:', err);
+            }
+        }
+
+        // プロンプト編集
+        function editPrompt(id) {
+            const item = prompts.find(p => p.id === id);
+            if (!item) return;
+
+            document.getElementById('editPromptId').value = item.id;
+            document.getElementById('modalTitle').textContent = 'プロンプトの編集';
+            document.getElementById('promptTitleInput').value = item.title;
+            document.getElementById('promptCategoryInput').value = item.category || 'その他';
+            document.getElementById('promptTagsInput').value = item.tags ? item.tags.join(', ') : '';
+            document.getElementById('promptContentInput').value = item.prompt;
+            document.getElementById('promptNoteInput').value = item.note || '';
+            document.getElementById('promptImageUrlInput').value = item.imageUrl || '';
+
+            if (item.imageUrl) {
+                document.getElementById('imagePreview').src = item.imageUrl;
+                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+            } else {
+                clearImagePreview();
+            }
+
+            openPromptModal(true);
+        }
+
+        // プロンプト削除
+        async function deletePromptItem(id) {
+            if (!confirm('このプロンプトを削除してもよろしいですか？')) return;
+
+            prompts = prompts.filter(p => p.id !== id);
+            saveToLocalStorage();
             renderPrompts();
-        });
+            showToast('削除しました');
 
-        // Modal Event Listeners
-        openModalBtn.addEventListener('click', () => openModal(false));
-        closeModalBtn.addEventListener('click', closeModal);
-        cancelBtn.addEventListener('click', closeModal);
-        resetFilterBtn.addEventListener('click', () => {
-            activeCategory = 'すべて';
-            searchQuery = '';
-            searchInput.value = '';
-            renderCategories();
-            renderPrompts();
-        });
+            if (GAS_WEB_APP_URL) {
+                try {
+                    await fetch(GAS_WEB_APP_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'delete', id: id })
+                    });
+                } catch(err) {
+                    console.error('GAS Delete Error:', err);
+                }
+            }
+        }
 
-        // Utilities
+        // 画像プレビュー関連
+        function previewImageFromUrl() {
+            const url = document.getElementById('promptImageUrlInput').value.trim();
+            if (url) {
+                document.getElementById('imagePreview').src = url;
+                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+            } else {
+                clearImagePreview();
+            }
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const base64 = evt.target.result;
+                document.getElementById('promptImageUrlInput').value = base64;
+                document.getElementById('imagePreview').src = base64;
+                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearImagePreview() {
+            document.getElementById('promptImageUrlInput').value = '';
+            document.getElementById('imageFileInput').value = '';
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('imagePreviewContainer').classList.add('hidden');
+        }
+
+        // LocalStorageへの一括保存
+        function saveToLocalStorage() {
+            localStorage.setItem('PROMPTS_DATA', JSON.stringify(prompts));
+        }
+
+        // GAS全データ上書き保存
+        async function saveAllPromptsToGAS(dataArray) {
+            if (!GAS_WEB_APP_URL) return;
+            try {
+                await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'saveAll', prompts: dataArray })
+                });
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        // GAS設定モーダル
+        function openSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+        function saveGasSettings() {
+            const url = document.getElementById('gasUrlInput').value.trim();
+            GAS_WEB_APP_URL = url;
+            localStorage.setItem('GAS_WEB_APP_URL', url);
+            closeSettingsModal();
+            showToast('GAS URL設定を保存しました');
+            fetchPromptsFromGAS();
+        }
+
+        // ユーティリティ
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = msg;
+            toast.classList.remove('translate-y-10', 'opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0', 'pointer-events-none');
+            }, 2500);
+        }
+
         function escapeHtml(str) {
             if (!str) return '';
-            return str.replace(/[&<>"']/g, function(m) {
-                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
-            });
+            return str.replace(/[&<>"']/g, m => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[m]);
         }
 
-        function escapeJsString(str) {
+        function escapeJs(str) {
             if (!str) return '';
-            return str.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$').replace(/"/g, '&quot;');
+            return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
         }
-
-        // Initialize on Load
-        window.addEventListener('DOMContentLoaded', () => {
-            fetchPromptsFromGAS();
-        });
     </script>
 </body>
 </html>
