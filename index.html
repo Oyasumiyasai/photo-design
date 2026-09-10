@@ -698,9 +698,13 @@
             const item = prompts.find(p => p.id === id);
             if (item && item.prompt) {
                 copyTextToClipboard(item.prompt);
-                const targetUrl = `https://gemini.google.com/?q=${encodeURIComponent(item.prompt)}`;
-                window.open(targetUrl, '_blank');
-                showToast('Geminiへ連携しました');
+                const targetUrl = 'https://gemini.google.com/app';
+                const win = window.open(targetUrl, '_blank');
+                if (!win) {
+                    // ポップアップがブロックされた場合は直接遷移
+                    window.location.href = targetUrl;
+                }
+                showToast('プロンプトをコピーしてGeminiを開きました');
             }
         }
 
@@ -708,9 +712,12 @@
             const item = prompts.find(p => p.id === id);
             if (item && item.prompt) {
                 copyTextToClipboard(item.prompt);
-                const targetUrl = `https://chatgpt.com/?q=${encodeURIComponent(item.prompt)}`;
-                window.open(targetUrl, '_blank');
-                showToast('ChatGPTへ連携しました');
+                const targetUrl = 'https://chatgpt.com/';
+                const win = window.open(targetUrl, '_blank');
+                if (!win) {
+                    window.location.href = targetUrl;
+                }
+                showToast('プロンプトをコピーしてChatGPTを開きました');
             }
         }
 
