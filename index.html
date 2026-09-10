@@ -712,12 +712,14 @@
             const item = prompts.find(p => p.id === id);
             if (item && item.prompt) {
                 copyTextToClipboard(item.prompt);
-                const targetUrl = 'https://chatgpt.com/';
+                // URLにエンコードしたプロンプトを付与してChatGPTを開く
+                const encodedPrompt = encodeURIComponent(item.prompt);
+                const targetUrl = `https://chatgpt.com/?q=${encodedPrompt}`;
                 const win = window.open(targetUrl, '_blank');
                 if (!win) {
                     window.location.href = targetUrl;
                 }
-                showToast('プロンプトをコピーしてChatGPTを開きました');
+                showToast('プロンプトを入力した状態でChatGPTを開きました');
             }
         }
 
