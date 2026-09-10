@@ -1,70 +1,85 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>プロンプトメモ & レイアウト管理</title>
+    <title>写真レイアウト・プロンプトメモ</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
+    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .line-clamp-3 {
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
+        .scrollbar-none::-webkit-scrollbar { display: none; }
+        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen pb-12">
+<body class="min-h-full flex flex-col text-slate-800 antialiased pb-12">
 
-    <!-- ヘッダー（新規プロンプト追加ボタン & 設定ボタン） -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <!-- ヘッダー -->
+    <header class="bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-            <!-- 左側：新規プロンプト追加ボタン -->
-            <button onclick="openPromptModal()" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all text-sm active:scale-95">
-                <i class="fa-solid fa-plus text-base"></i>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-200 shrink-0">
+                    <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">プロンプトメモ</h1>
+                    <p class="text-xs text-slate-500 hidden sm:block">画像生成・AI用プロンプト管理ライブラリ</p>
+                </div>
+            </div>
+
+            <!-- 新規プロンプト追加ボタン -->
+            <button onclick="openPromptModal()" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all text-xs sm:text-sm">
+                <i class="fa-solid fa-plus text-sm"></i>
                 <span>新規プロンプト追加</span>
             </button>
-
-            <!-- 右側：同期ステータス & GAS設定ボタン -->
-            <div class="flex items-center gap-3">
-                <div id="syncStatus" class="hidden sm:flex items-center gap-2 text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-                    <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span id="syncStatusText">スプレッドシート連携済み</span>
-                </div>
-                <button onclick="openSettingsModal()" class="p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors" title="GAS連携設定">
-                    <i class="fa-solid fa-gear text-lg"></i>
-                </button>
-            </div>
         </div>
     </header>
 
     <!-- メインコンテンツ -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 flex-1 w-full">
         
         <!-- 検索・フィルター領域 -->
-        <div class="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
-            <!-- カテゴリタブ -->
-            <div class="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none" id="categoryFilterContainer">
-                <!-- JSで動的生成 -->
+        <div class="space-y-4 mb-6">
+            <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+                <!-- カテゴリタブ -->
+                <div class="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none" id="categoryFilterContainer">
+                    <!-- JSで動的生成 -->
+                </div>
+
+                <!-- 検索窓 -->
+                <div class="relative w-full md:w-72">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="searchInput" oninput="renderPrompts()" placeholder="プロンプトやタイトルを検索..." 
+                        class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                </div>
             </div>
 
-            <!-- 検索窓 -->
-            <div class="relative w-full md:w-72">
-                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                <input type="text" id="searchInput" oninput="renderPrompts()" placeholder="プロンプトやタグを検索..." 
-                    class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+            <!-- タグで絞り込み（チェックボックス形式） -->
+            <div class="bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-tags text-indigo-500"></i>
+                        タグで絞り込み
+                    </span>
+                    <button onclick="clearTagFilters()" class="text-[11px] font-medium text-slate-400 hover:text-indigo-600 transition-colors">
+                        選択をクリア
+                    </button>
+                </div>
+                <div id="tagFilterCheckboxContainer" class="flex flex-wrap gap-2 max-h-28 overflow-y-auto pt-1">
+                    <!-- JSで動的にタグチェックボックスを挿入 -->
+                </div>
             </div>
         </div>
 
         <!-- プロンプトタイル（独立したカード一覧） -->
         <div id="promptGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- JSで動的に個別のカードが描画されます -->
+            <!-- JSで動的に個別のタイルカードが描画されます -->
         </div>
 
         <!-- データ空の場合の表示 -->
@@ -74,7 +89,7 @@
             </div>
             <h3 class="text-base font-semibold text-slate-700 mb-1">プロンプトが見つかりません</h3>
             <p class="text-sm text-slate-500 max-w-sm mb-4">新規追加ボタンから新しいプロンプトを登録してください。</p>
-            <button onclick="openPromptModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg text-sm">
+            <button onclick="openPromptModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-sm shadow-sm transition-all">
                 プロンプトを作成する
             </button>
         </div>
@@ -105,18 +120,23 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">カテゴリ</label>
                         <select id="promptCategoryInput" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white">
-                            <option value="人物・ポーズ">人物・ポーズ</option>
-                            <option value="レイアウト・構図">レイアウト・構図</option>
-                            <option value="背景・風景">背景・風景</option>
-                            <option value="照明・シネマ">照明・シネマ</option>
-                            <option value="スタイル・画風">スタイル・画風</option>
+                            <option value="写真加工">写真加工</option>
+                            <option value="占い・診断">占い・診断</option>
                             <option value="その他" selected>その他</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">タグ (カンマ区切り)</label>
-                        <input type="text" id="promptTagsInput" placeholder="例: 屋外, 8k, シネマティック" 
-                            class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">タグ選択・自由追加</label>
+                        <div class="flex gap-2 mb-2">
+                            <input type="text" id="newTagInput" placeholder="新しいタグ..." onkeydown="if(event.key==='Enter'){event.preventDefault();addNewTagInModal();}"
+                                class="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                            <button type="button" onclick="addNewTagInModal()" class="shrink-0 bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-xl text-xs font-medium transition-colors">
+                                追加
+                            </button>
+                        </div>
+                        <div id="modalTagCheckboxList" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                            <!-- JSでチェックボックス群を生成 -->
+                        </div>
                     </div>
                 </div>
 
@@ -134,13 +154,13 @@
                         class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
                 </div>
 
-                <!-- 参考画像 (URL または ファイルアップロード) -->
+                <!-- 参考画像 -->
                 <div>
                     <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">参考画像 (URL または ファイル選択)</label>
                     <div class="flex gap-2 mb-2">
                         <input type="url" id="promptImageUrlInput" placeholder="https://example.com/image.jpg" oninput="previewImageFromUrl()"
                             class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
-                        <label class="shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-medium cursor-pointer border border-slate-200 flex items-center gap-1.5">
+                        <label class="shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-medium cursor-pointer border border-slate-200 flex items-center gap-1.5 transition-colors">
                             <i class="fa-solid fa-upload"></i>
                             <span id="uploadBtnLabel">画像選択</span>
                             <input type="file" id="imageFileInput" accept="image/*" onchange="handleFileSelect(event)" class="hidden">
@@ -168,29 +188,21 @@
         </div>
     </div>
 
-    <!-- GAS 設定モーダル -->
-    <div id="settingsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100">
-            <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
-                <h3 class="text-lg font-bold text-slate-800">Google スプレッドシート連携</h3>
-                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
+    <!-- 削除確認カスタムモーダル -->
+    <div id="deleteConfirmModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 text-center">
+            <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i class="fa-solid fa-trash-can text-xl"></i>
             </div>
-            <div class="space-y-4">
-                <p class="text-xs text-slate-600 leading-relaxed">
-                    デプロイした GAS (Google Apps Script) のウェブアプリ URL を設定すると、Google スプレッドシートとデータを完全同期できます。
-                </p>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">GAS Web App URL</label>
-                    <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/.../exec" 
-                        class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
-                </div>
-                <div class="flex items-center justify-end gap-3 pt-2">
-                    <button onclick="saveGasSettings()" class="w-full py-2.5 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm transition-all">
-                        URLを保存して同期
-                    </button>
-                </div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">プロンプトを削除しますか？</h3>
+            <p class="text-xs text-slate-500 mb-5">この操作は取り消せません。</p>
+            <div class="flex items-center justify-center gap-3">
+                <button onclick="closeDeleteConfirmModal()" class="flex-1 py-2 px-4 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                    キャンセル
+                </button>
+                <button id="confirmDeleteBtn" class="flex-1 py-2 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all">
+                    削除する
+                </button>
             </div>
         </div>
     </div>
@@ -204,26 +216,40 @@
     <script>
         const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbyfLxct_Hx4PX6FvvEZrAAbzpfK5SDc-fauoHpPCx6bX86U9CoXY7o-YXykCcqdY9Bi/exec';
         
-        let GAS_WEB_APP_URL = localStorage.getItem('GAS_WEB_APP_URL') || DEFAULT_GAS_URL;
+        let GAS_WEB_APP_URL = DEFAULT_GAS_URL;
         let prompts = [];
         let currentCategory = 'すべて';
+        let deleteTargetId = null;
 
-        // 初期プロンプトサンプルデータ
+        // タグ管理状態（未使用タグは自動消去されるため固定リストを廃止）
+        let selectedFilterTags = new Set();
+        let selectedModalTags = new Set();
+
+        // サンプルデータ
         const defaultPrompts = [
             {
                 id: 'sample-1',
-                title: 'シネマティックポートレート',
-                category: '人物・ポーズ',
-                tags: ['人物', 'シネマティック', '8k'],
+                title: 'シネマティックポートレート写真加工',
+                category: '写真加工',
+                tags: ['ポートレート', '高画質', 'レタッチ'],
                 prompt: 'Cinematic portrait of a young woman standing in neon-lit city street at night, shallow depth of field, 85mm lens, atmospheric lighting, high detail, photorealistic --ar 16:9',
                 note: 'MidjourneyやStable Diffusionにおすすめ',
                 imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
+                updatedAt: new Date().toISOString()
+            },
+            {
+                id: 'sample-2',
+                title: 'タロットカード風占いイラスト',
+                category: '占い・診断',
+                tags: ['タロット', '性格診断'],
+                prompt: 'A mystic tarot card illustration depicting fortune and hope, elaborate ornate golden border, cosmic background with glowing stars, intricate details, vector art style --ar 2:3',
+                note: '神秘的な画像生成プロンプト',
+                imageUrl: '',
                 updatedAt: new Date().toISOString()
             }
         ];
 
         window.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('gasUrlInput').value = GAS_WEB_APP_URL;
             loadPrompts();
         });
 
@@ -247,16 +273,11 @@
                 prompts = [...defaultPrompts];
             }
             renderCategories();
+            renderTagFilterCheckboxes();
             renderPrompts();
         }
 
         async function fetchPromptsFromGAS() {
-            const syncStatusText = document.getElementById('syncStatusText');
-            const syncStatusDot = document.getElementById('syncStatusDot');
-            
-            syncStatusText.textContent = '同期中...';
-            syncStatusDot.className = 'w-2 h-2 rounded-full bg-amber-500 animate-ping';
-
             try {
                 const response = await fetch(`${GAS_WEB_APP_URL}?action=getAll`);
                 const res = await response.json();
@@ -266,27 +287,42 @@
                         prompts = [...defaultPrompts];
                         await saveAllPromptsToGAS(prompts);
                     } else {
+                        // スプレッドシートからのデータを取得し、最新順（reverse）に保持
                         prompts = res.data.reverse();
                     }
                     saveToLocalStorage();
-                    syncStatusText.textContent = 'GAS完全同期済み';
-                    syncStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
                 } else {
                     throw new Error(res.message || '取得失敗');
                 }
             } catch (err) {
                 console.warn('GAS Fetch Error:', err);
-                syncStatusText.textContent = 'オフライン（ローカル）';
-                syncStatusDot.className = 'w-2 h-2 rounded-full bg-slate-400';
                 loadFromLocalStorage();
             }
             renderCategories();
+            renderTagFilterCheckboxes();
             renderPrompts();
+        }
+
+        function getAllUniqueTags() {
+            const tagSet = new Set();
+            // 現在存在するプロンプトで使用されているタグのみを抽出
+            prompts.forEach(p => {
+                if (Array.isArray(p.tags)) {
+                    p.tags.forEach(t => {
+                        if (t && t.trim()) tagSet.add(t.trim());
+                    });
+                }
+            });
+            // モーダル作成中に新規追加されたタグ（まだ保存前）も一時表示
+            selectedModalTags.forEach(t => {
+                if (t && t.trim()) tagSet.add(t.trim());
+            });
+            return Array.from(tagSet);
         }
 
         function renderCategories() {
             const container = document.getElementById('categoryFilterContainer');
-            const categories = ['すべて', '人物・ポーズ', 'レイアウト・構図', '背景・風景', '照明・シネマ', 'スタイル・画風', 'その他'];
+            const categories = ['すべて', '写真加工', '占い・診断', 'その他'];
             
             container.innerHTML = categories.map(cat => `
                 <button onclick="setCategory('${cat}')" 
@@ -306,7 +342,56 @@
             renderPrompts();
         }
 
-        // タイル形式カードの安全な描画（ID渡しによりSyntaxErrorを回避）
+        // 検索フィルター用のタグチェックボックスレンダリング
+        function renderTagFilterCheckboxes() {
+            const container = document.getElementById('tagFilterCheckboxContainer');
+            const allTags = getAllUniqueTags();
+
+            // 削除・編集により存在しなくなったタグがフィルター選択に残っていれば除去
+            selectedFilterTags.forEach(tag => {
+                if (!allTags.includes(tag)) {
+                    selectedFilterTags.delete(tag);
+                }
+            });
+
+            if (allTags.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-400">登録されたタグがありません</span>`;
+                return;
+            }
+
+            container.innerHTML = allTags.map(tag => {
+                const isChecked = selectedFilterTags.has(tag);
+                return `
+                    <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs cursor-pointer select-none transition-all ${
+                        isChecked 
+                        ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-semibold' 
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }">
+                        <input type="checkbox" value="${escapeHtml(tag)}" ${isChecked ? 'checked' : ''} 
+                            onchange="toggleTagFilter('${escapeHtml(tag)}')" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
+                        <span>#${escapeHtml(tag)}</span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        function toggleTagFilter(tag) {
+            if (selectedFilterTags.has(tag)) {
+                selectedFilterTags.delete(tag);
+            } else {
+                selectedFilterTags.add(tag);
+            }
+            renderTagFilterCheckboxes();
+            renderPrompts();
+        }
+
+        function clearTagFilters() {
+            selectedFilterTags.clear();
+            renderTagFilterCheckboxes();
+            renderPrompts();
+        }
+
+        // タイル形式カードの描画
         function renderPrompts() {
             const grid = document.getElementById('promptGrid');
             const emptyState = document.getElementById('emptyState');
@@ -314,11 +399,20 @@
 
             const filtered = prompts.filter(item => {
                 const matchCategory = (currentCategory === 'すべて' || item.category === currentCategory);
+                
+                // キーワード検索（タイトル・本文・タグ）
                 const matchSearch = !searchKeyword || 
-                    item.title.toLowerCase().includes(searchKeyword) ||
-                    item.prompt.toLowerCase().includes(searchKeyword) ||
+                    (item.title && item.title.toLowerCase().includes(searchKeyword)) ||
+                    (item.prompt && item.prompt.toLowerCase().includes(searchKeyword)) ||
                     (item.tags && item.tags.some(t => t.toLowerCase().includes(searchKeyword)));
-                return matchCategory && matchSearch;
+
+                // タグのチェックボックス選択絞り込み
+                let matchTags = true;
+                if (selectedFilterTags.size > 0) {
+                    matchTags = item.tags && Array.from(selectedFilterTags).every(t => item.tags.includes(t));
+                }
+
+                return matchCategory && matchSearch && matchTags;
             });
 
             if (filtered.length === 0) {
@@ -331,18 +425,19 @@
             emptyState.classList.add('hidden');
             emptyState.classList.remove('flex');
 
+            // グリッドカード描画（入れ子化を防ぎ、独立したカードを作成）
             grid.innerHTML = filtered.map(item => `
                 <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden group">
-                    <!-- 画像エリア -->
+                    <!-- 参考画像 -->
                     ${item.imageUrl ? `
-                        <div class="relative w-full h-44 bg-slate-100 overflow-hidden border-b border-slate-100">
-                            <img src="${item.imageUrl}" alt="${escapeHtml(item.title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.parentElement.style.display='none'">
+                        <div class="relative w-full h-48 bg-slate-100 overflow-hidden border-b border-slate-100">
+                            <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.parentElement.style.display='none'">
                         </div>
                     ` : ''}
 
                     <div class="p-5 flex-1 flex flex-col justify-between gap-4">
                         <div class="space-y-3">
-                            <!-- カテゴリ & 編集/削除 -->
+                            <!-- カテゴリ & アクションアイコン -->
                             <div class="flex items-center justify-between gap-2">
                                 <span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100/60">
                                     ${escapeHtml(item.category || 'その他')}
@@ -351,7 +446,7 @@
                                     <button onclick="editPrompt('${item.id}')" class="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors" title="編集">
                                         <i class="fa-solid fa-pen text-xs"></i>
                                     </button>
-                                    <button onclick="deletePromptItem('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition-colors" title="削除">
+                                    <button onclick="askDeletePrompt('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition-colors" title="削除">
                                         <i class="fa-solid fa-trash text-xs"></i>
                                     </button>
                                 </div>
@@ -362,14 +457,15 @@
 
                             <!-- プロンプト本文 -->
                             <div class="bg-slate-50 border border-slate-200/70 rounded-xl p-3">
-                                <p class="font-mono text-xs text-slate-700 leading-relaxed line-clamp-3 select-all">${escapeHtml(item.prompt)}</p>
+                                <p class="font-mono text-xs text-slate-700 leading-relaxed line-clamp-4 select-all">${escapeHtml(item.prompt)}</p>
                             </div>
 
-                            <!-- メモやタグ -->
+                            <!-- メモ -->
                             ${item.note ? `
                                 <p class="text-xs text-slate-500 italic"><i class="fa-regular fa-note-sticky mr-1"></i>${escapeHtml(item.note)}</p>
                             ` : ''}
 
+                            <!-- タグ一覧 -->
                             ${item.tags && item.tags.length > 0 ? `
                                 <div class="flex flex-wrap gap-1 pt-1">
                                     ${item.tags.map(tag => `<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">#${escapeHtml(tag)}</span>`).join('')}
@@ -377,17 +473,17 @@
                             ` : ''}
                         </div>
 
-                        <!-- アクションボタングループ (ID渡しでエラー防止) -->
+                        <!-- アクションボタン（コピー・Gemini・ChatGPT） -->
                         <div class="pt-3 border-t border-slate-100 flex items-center gap-1.5">
                             <button onclick="copyPromptById('${item.id}')" class="flex-1 inline-flex items-center justify-center gap-1 bg-slate-900 hover:bg-slate-800 text-white font-medium py-2 px-2.5 rounded-xl text-xs transition-all shadow-sm active:scale-95" title="クリップボードにコピー">
                                 <i class="fa-regular fa-copy"></i>
                                 <span>コピー</span>
                             </button>
-                            <button onclick="openInGeminiById('${item.id}')" class="flex-1 inline-flex items-center justify-center gap-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-2 px-2 rounded-xl text-xs transition-all border border-indigo-200/60 active:scale-95" title="プロンプトをセットしてGeminiを開く">
+                            <button onclick="openInGeminiById('${item.id}')" class="flex-1 inline-flex items-center justify-center gap-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-2 px-2 rounded-xl text-xs transition-all border border-indigo-200/60 active:scale-95" title="Geminiを開く">
                                 <i class="fa-solid fa-sparkles text-indigo-600"></i>
                                 <span>Gemini</span>
                             </button>
-                            <button onclick="openInChatGPTById('${item.id}')" class="flex-1 inline-flex items-center justify-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold py-2 px-2 rounded-xl text-xs transition-all border border-emerald-200/60 active:scale-95" title="プロンプトをセットしてChatGPTを開く">
+                            <button onclick="openInChatGPTById('${item.id}')" class="flex-1 inline-flex items-center justify-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold py-2 px-2 rounded-xl text-xs transition-all border border-emerald-200/60 active:scale-95" title="ChatGPTを開く">
                                 <i class="fa-solid fa-robot text-emerald-600"></i>
                                 <span>ChatGPT</span>
                             </button>
@@ -397,67 +493,50 @@
             `).join('');
         }
 
-        function copyPromptById(id) {
-            const item = prompts.find(p => p.id === id);
-            if (item) copyPromptText(item.prompt);
-        }
+        // モーダル内タグ描画
+        function renderModalTagCheckboxes() {
+            const container = document.getElementById('modalTagCheckboxList');
+            const allTags = getAllUniqueTags();
 
-        function openInGeminiById(id) {
-            const item = prompts.find(p => p.id === id);
-            if (item) openInGemini(item.prompt);
-        }
-
-        function openInChatGPTById(id) {
-            const item = prompts.find(p => p.id === id);
-            if (item) openInChatGPT(item.prompt);
-        }
-
-        function openInGemini(text) {
-            copyToClipboard(text);
-            showToast('コピーしました！Geminiを開きます');
-            const targetUrl = 'https://gemini.google.com/?q=' + encodeURIComponent(text);
-            setTimeout(() => {
-                window.open(targetUrl, '_blank');
-            }, 400);
-        }
-
-        function openInChatGPT(text) {
-            copyToClipboard(text);
-            showToast('コピーしました！ChatGPTを開きます');
-            const targetUrl = 'https://chatgpt.com/?q=' + encodeURIComponent(text);
-            setTimeout(() => {
-                window.open(targetUrl, '_blank');
-            }, 400);
-        }
-
-        function copyPromptText(text) {
-            copyToClipboard(text);
-            showToast('クリップボードにコピーしました');
-        }
-
-        function copyToClipboard(text) {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.top = "0";
-            textArea.style.left = "0";
-            textArea.style.position = "fixed";
-            textArea.style.opacity = "0";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-
-            try {
-                const successful = document.execCommand('copy');
-                if (!successful && navigator.clipboard) {
-                    navigator.clipboard.writeText(text).catch(() => {});
-                }
-            } catch (err) {
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(text).catch(() => {});
-                }
-            } finally {
-                document.body.removeChild(textArea);
+            if (allTags.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-400">新しいタグを追加してください</span>`;
+                return;
             }
+
+            container.innerHTML = allTags.map(tag => {
+                const isChecked = selectedModalTags.has(tag);
+                return `
+                    <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs cursor-pointer select-none ${
+                        isChecked ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-medium' : 'bg-white border-slate-200 text-slate-600'
+                    }">
+                        <input type="checkbox" value="${escapeHtml(tag)}" ${isChecked ? 'checked' : ''} 
+                            onchange="toggleModalTag('${escapeHtml(tag)}')" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
+                        <span>#${escapeHtml(tag)}</span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        function toggleModalTag(tag) {
+            if (selectedModalTags.has(tag)) {
+                selectedModalTags.delete(tag);
+            } else {
+                selectedModalTags.add(tag);
+            }
+            renderModalTagCheckboxes();
+        }
+
+        function addNewTagInModal() {
+            const input = document.getElementById('newTagInput');
+            const newTag = input.value.trim().replace(/^#/, '');
+
+            if (!newTag) return;
+
+            selectedModalTags.add(newTag);
+            input.value = '';
+
+            renderModalTagCheckboxes();
+            renderTagFilterCheckboxes();
         }
 
         function openPromptModal(isEdit = false) {
@@ -465,8 +544,10 @@
                 document.getElementById('editPromptId').value = '';
                 document.getElementById('modalTitle').textContent = '新規プロンプトの作成';
                 document.getElementById('promptForm').reset();
+                selectedModalTags.clear();
                 clearImagePreview();
             }
+            renderModalTagCheckboxes();
             document.getElementById('promptModal').classList.remove('hidden');
         }
 
@@ -480,12 +561,11 @@
             const editId = document.getElementById('editPromptId').value;
             const title = document.getElementById('promptTitleInput').value.trim();
             const category = document.getElementById('promptCategoryInput').value;
-            const tagsStr = document.getElementById('promptTagsInput').value.trim();
             const prompt = document.getElementById('promptContentInput').value.trim();
             const note = document.getElementById('promptNoteInput').value.trim();
             const imageUrl = document.getElementById('promptImageUrlInput').value.trim();
 
-            const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : [];
+            const tags = Array.from(selectedModalTags);
 
             const promptData = {
                 id: editId || Date.now().toString(),
@@ -502,32 +582,18 @@
                 const index = prompts.findIndex(p => p.id === editId);
                 if (index !== -1) prompts[index] = promptData;
             } else {
+                // 新規作成は常に【最上部（先頭）】へ追加
                 prompts.unshift(promptData);
             }
 
             saveToLocalStorage();
+            renderTagFilterCheckboxes();
             renderPrompts();
             closePromptModal();
-            showToast(editId ? '更新しました' : '先頭に追加しました');
+            showToast(editId ? '更新しました' : '一番上に追加しました');
 
             if (GAS_WEB_APP_URL) {
                 savePromptToGAS(promptData);
-            }
-        }
-
-        async function savePromptToGAS(promptData) {
-            try {
-                await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'save',
-                        prompt: promptData
-                    })
-                });
-            } catch (err) {
-                console.error('GAS Save Error:', err);
             }
         }
 
@@ -539,10 +605,11 @@
             document.getElementById('modalTitle').textContent = 'プロンプトの編集';
             document.getElementById('promptTitleInput').value = item.title;
             document.getElementById('promptCategoryInput').value = item.category || 'その他';
-            document.getElementById('promptTagsInput').value = item.tags ? item.tags.join(', ') : '';
             document.getElementById('promptContentInput').value = item.prompt;
             document.getElementById('promptNoteInput').value = item.note || '';
             document.getElementById('promptImageUrlInput').value = item.imageUrl || '';
+
+            selectedModalTags = new Set(item.tags || []);
 
             if (item.imageUrl) {
                 document.getElementById('imagePreview').src = item.imageUrl;
@@ -554,8 +621,26 @@
             openPromptModal(true);
         }
 
-        async function deletePromptItem(id) {
-            if (!confirm('このプロンプトを削除してもよろしいですか？')) return;
+        function askDeletePrompt(id) {
+            deleteTargetId = id;
+            const modal = document.getElementById('deleteConfirmModal');
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            
+            confirmBtn.onclick = async () => {
+                await executeDeletePrompt(deleteTargetId);
+                closeDeleteConfirmModal();
+            };
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeDeleteConfirmModal() {
+            deleteTargetId = null;
+            document.getElementById('deleteConfirmModal').classList.add('hidden');
+        }
+
+        async function executeDeletePrompt(id) {
+            if (!id) return;
 
             prompts = prompts.filter(p => p.id !== id);
             saveToLocalStorage();
@@ -573,6 +658,59 @@
                 } catch(err) {
                     console.error('GAS Delete Error:', err);
                 }
+            }
+        }
+
+        // 安全なクリップボードコピー処理
+        function copyTextToClipboard(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            let successful = false;
+            try {
+                successful = document.execCommand('copy');
+            } catch (err) {
+                successful = false;
+            }
+            document.body.removeChild(textArea);
+
+            if (!successful && navigator.clipboard) {
+                navigator.clipboard.writeText(text).catch(() => {});
+            }
+            return successful;
+        }
+
+        function copyPromptById(id) {
+            const item = prompts.find(p => p.id === id);
+            if (item && item.prompt) {
+                copyTextToClipboard(item.prompt);
+                showToast('プロンプトをコピーしました');
+            }
+        }
+
+        function openInGeminiById(id) {
+            const item = prompts.find(p => p.id === id);
+            if (item && item.prompt) {
+                copyTextToClipboard(item.prompt);
+                const targetUrl = `https://gemini.google.com/?q=${encodeURIComponent(item.prompt)}`;
+                window.open(targetUrl, '_blank');
+                showToast('Geminiへ連携しました');
+            }
+        }
+
+        function openInChatGPTById(id) {
+            const item = prompts.find(p => p.id === id);
+            if (item && item.prompt) {
+                copyTextToClipboard(item.prompt);
+                const targetUrl = `https://chatgpt.com/?q=${encodeURIComponent(item.prompt)}`;
+                window.open(targetUrl, '_blank');
+                showToast('ChatGPTへ連携しました');
             }
         }
 
@@ -597,12 +735,11 @@
             reader.onload = function(evt) {
                 const img = new Image();
                 img.onload = function() {
-                    // スプレッドシートの1セル上限（50,000文字）に確実に収めるため、45,000文字以下を目標にする
+                    // スプレッドシート制限（50,000文字）に合わせ、45,000文字以下に調整
                     let quality = 0.65;
-                    let maxDim = 480; // カードプレビューに最適なサイズ
+                    let maxDim = 480;
                     let compressedBase64 = '';
 
-                    // 45,000文字以下になるまで段階的に自動調整・圧縮
                     for (let attempt = 0; attempt < 6; attempt++) {
                         const canvas = document.createElement('canvas');
                         let width = img.width;
@@ -627,18 +764,16 @@
 
                         compressedBase64 = canvas.toDataURL('image/jpeg', quality);
 
-                        // 45,000文字以下であればクリア
                         if (compressedBase64.length <= 45000) {
                             break;
                         }
 
-                        // 目標サイズを超える場合は解像度と画質を段階的に下げて再試行
                         maxDim = Math.round(maxDim * 0.8);
                         quality = Math.max(0.35, quality - 0.08);
                     }
 
                     if (compressedBase64.length > 48000) {
-                        showToast('画像データが大きすぎます。別の画像をお試しください。');
+                        showToast('画像サイズが大きすぎます。別の画像をお試しください。');
                         btnLabel.textContent = '画像選択';
                         return;
                     }
@@ -647,7 +782,7 @@
                     document.getElementById('imagePreview').src = compressedBase64;
                     document.getElementById('imagePreviewContainer').classList.remove('hidden');
                     btnLabel.textContent = '画像選択';
-                    showToast('画像を最適化しました（保存可能）');
+                    showToast('画像を最適化しました');
                 };
                 img.onerror = function() {
                     showToast('画像の読み込みに失敗しました');
@@ -670,6 +805,20 @@
             localStorage.setItem('PROMPTS_DATA', JSON.stringify(prompts));
         }
 
+        async function savePromptToGAS(promptItem) {
+            if (!GAS_WEB_APP_URL) return;
+            try {
+                await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'save', prompt: promptItem })
+                });
+            } catch(e) {
+                console.error('GAS Save Error:', e);
+            }
+        }
+
         async function saveAllPromptsToGAS(dataArray) {
             if (!GAS_WEB_APP_URL) return;
             try {
@@ -680,23 +829,8 @@
                     body: JSON.stringify({ action: 'saveAll', prompts: dataArray })
                 });
             } catch(e) {
-                console.error(e);
+                console.error('GAS SaveAll Error:', e);
             }
-        }
-
-        function openSettingsModal() {
-            document.getElementById('settingsModal').classList.remove('hidden');
-        }
-        function closeSettingsModal() {
-            document.getElementById('settingsModal').classList.add('hidden');
-        }
-        function saveGasSettings() {
-            const url = document.getElementById('gasUrlInput').value.trim();
-            GAS_WEB_APP_URL = url;
-            localStorage.setItem('GAS_WEB_APP_URL', url);
-            closeSettingsModal();
-            showToast('GAS URL設定を保存しました');
-            fetchPromptsFromGAS();
         }
 
         function showToast(msg) {
